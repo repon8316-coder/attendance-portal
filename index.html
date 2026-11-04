@@ -117,6 +117,16 @@ tbody tr{transition:.12s}
 tbody tr.clk{cursor:pointer}
 tbody tr.clk:hover td{background:#e9f1ff}
 td.roll{font-weight:700;background:#f1f5fb!important}
+/* frozen first 3 columns */
+table.ct th:nth-child(1),table.ct td:nth-child(1){position:sticky;left:0;width:72px;min-width:72px;max-width:72px}
+table.ct th:nth-child(2),table.ct td:nth-child(2){position:sticky;left:72px;width:190px;min-width:190px;max-width:190px;overflow:hidden;text-overflow:ellipsis}
+table.ct th:nth-child(3),table.ct td:nth-child(3){position:sticky;left:262px;width:120px;min-width:120px;max-width:120px;box-shadow:3px 0 6px -3px rgba(15,40,80,.35)}
+table.ct td:nth-child(1),table.ct td:nth-child(2),table.ct td:nth-child(3){z-index:3;background:#fff}
+table.ct tbody tr:nth-child(even) td:nth-child(-n+3){background:#f4f7fc}
+table.ct tbody tr.clk:hover td:nth-child(-n+3){background:#e9f1ff}
+table.ct td.roll{background:#eaf0fa!important}
+table.ct thead th:nth-child(-n+3){z-index:8}
+
 .pa{display:inline-block;min-width:22px;border-radius:6px;font-weight:700;font-size:13px;padding:1px 0}
 .pa.P{background:var(--okbg);color:var(--ok)}
 .pa.A{background:var(--badbg);color:var(--bad)}
@@ -161,11 +171,11 @@ td.roll{font-weight:700;background:#f1f5fb!important}
 .sh-info{display:grid;grid-template-columns:1fr 1fr;gap:1.4mm 7mm;font-size:11.5pt;border:.3mm solid #cfdaea;border-radius:2.5mm;padding:3.2mm 4mm;background:#f6f9fe}
 .sh-info div{display:flex;gap:2mm}.sh-info span{color:#4b5d78;min-width:25mm}.sh-info b{font-weight:600}
 .sh-info .full{grid-column:1/-1}
-.sh-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:3mm;margin:3.5mm 0}
+.sh-sum{display:grid;grid-template-columns:repeat(5,1fr);gap:3mm;margin:3.5mm 0}
 .sh-sum div{border-radius:2.5mm;text-align:center;padding:2.4mm 1mm;border:.3mm solid #cfdaea}
 .sh-sum b{display:block;font-size:17pt;line-height:1.1}
 .sh-sum span{font-size:9pt;color:#4b5d78}
-.sh-sum .a{background:#eaf2ff}.sh-sum .b{background:#e6f7ec}.sh-sum .c{background:#fdecec}.sh-sum .d{background:#fff6e0}
+.sh-sum .a{background:#eaf2ff}.sh-sum .b{background:#e6f7ec}.sh-sum .c{background:#fdecec}.sh-sum .d{background:#fff6e0}.sh-sum .e{background:#efe9ff}
 .sh-t{font-size:11.5pt;font-weight:700;color:#0e3b6e;margin:2.6mm 0 1.4mm;display:flex;align-items:center;gap:2mm}
 .sh-t:before{content:"";width:1.4mm;height:4mm;background:#14806b;border-radius:2px}
 .sh table{font-size:10.5pt}
@@ -184,6 +194,7 @@ td.roll{font-weight:700;background:#f1f5fb!important}
 
 /* ---------- print ---------- */
 @media print{
+  table.ct th,table.ct td{position:static!important;box-shadow:none!important}
   body{background:#fff}
   .top,.no-print,.toast,.pop{display:none!important}
   .wrap{padding:0;max-width:none}
@@ -275,6 +286,13 @@ async function rest(path,params){
   if(!r.ok)throw new Error('সার্ভার ত্রুটি ('+r.status+')');
   return r.json();
 }
+async function rpc(name,body){
+  var t=await token();
+  var r=await fetch(SB_URL+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(r.status===401){saveSession(null);throw new Error('AUTH');}
+  if(!r.ok)throw new Error('সার্ভার ত্রুটি ('+r.status+')');
+  return r.json();
+}
 async function fetchAll(path,params){
   var out=[],off=0,page=1000;
   for(;;){var list=await rest(path,Object.assign({},params,{limit:page,offset:off}));out=out.concat(list);if(list.length<page)break;off+=page;}
@@ -362,18 +380,18 @@ function resolvePeriod(q){
 }
 
 function homeView(){
-  if(!cq.batch){var b=uniq(rows,'batch');cq.batch=b.length?b[b.length-1]:'';}
-  if(cq.batch&&!cq.faculty){var f=uniq(rows.filter(function(r){return r.batch===cq.batch;}),'faculty');cq.faculty=f.length?f[0]:'';}
-  var inB=rows.filter(function(r){return r.batch===cq.batch;});
+  if(!cq.batch){var b=uniq(allBF(),'batch');cq.batch=b.length?b[b.length-1]:'';}
+  if(cq.batch&&!cq.faculty){var f=uniq(allBF().filter(function(r){return r.batch===cq.batch;}),'faculty');cq.faculty=f.length?f[0]:'';}
+  var inB=allBF().filter(function(r){return r.batch===cq.batch;});
   var inBF=inB.filter(function(r){return r.faculty===cq.faculty;});
-  if(!rows.length){
+  if(!rows.length&&!Object.keys(roster).length){
     page('<div class="hero rise"><h2>স্বাগতম 👋</h2><p>এখনো কোনো হাজিরা Sync করা হয়নি। অ্যাপ থেকে হাজিরা নিয়ে <b>SYNC TO REPON</b> চাপলে এখানে দেখা যাবে।</p></div>');
     return;
   }
   var customShow=cq.period==='Custom',refShow=['Weekly','Monthly','Annual'].indexOf(cq.period)>=0;
   page('<div class="hero rise"><h2>হাজিরা রিপোর্ট</h2><p>ব্যাচ ও ফ্যাকাল্টি বেছে রিপোর্ট দেখুন। উপরের Search বক্সে ব্যাচ, সাল, রোল, নাম বা মাস লিখে সরাসরি খুঁজতেও পারেন।</p></div>'+
    '<div class="panel rise"><div class="sec">Filter</div><div class="grid">'+
-   '<div class="fld"><label>Batch</label><select id="fb">'+opts(uniq(rows,'batch'),cq.batch,'— বাছাই —')+'</select></div>'+
+   '<div class="fld"><label>Batch</label><select id="fb">'+opts(uniq(allBF(),'batch'),cq.batch,'— বাছাই —')+'</select></div>'+
    '<div class="fld"><label>Faculty</label><select id="ff">'+opts(uniq(inB,'faculty'),cq.faculty,'— বাছাই —')+'</select></div>'+
    '<div class="fld"><label>Department / Subject</label><select id="fd">'+opts(uniq(inBF,'department'),cq.department,'সব')+'</select></div>'+
    '<div class="fld"><label>Section</label><select id="fs">'+opts(uniq(inBF,'section'),cq.section,'সব')+'</select></div>'+
@@ -393,6 +411,8 @@ function homeView(){
   renderClass();
 }
 
+function rosterPairs(){return Object.keys(roster).map(function(k){var a=k.split('|');return{batch:a[0],faculty:a[1],roll:a[2]};});}
+function allBF(){return rows.concat(rosterPairs());}
 function classData(){
   var period=resolvePeriod(cq);
   var list=rows.filter(function(r){
@@ -404,6 +424,8 @@ function classData(){
   var students={},dateSet={};
   list.forEach(function(r){var s=students[r.roll];if(!s)s=students[r.roll]={roll:r.roll,name:'',mobile:'',section:'',days:{},batch:r.batch,faculty:r.faculty};
     var i=info(r);if(i.name)s.name=i.name;if(i.mobile)s.mobile=i.mobile;s.section=r.section;s.days[r.class_date]=r.status;dateSet[r.class_date]=1;});
+  if(!cq.department&&!cq.section){Object.keys(roster).forEach(function(k){var a=k.split('|');
+    if(a[0]===cq.batch&&a[1]===cq.faculty&&!students[a[2]]){var m=roster[k];students[a[2]]={roll:a[2],name:m.name||'',mobile:m.mobile||'',section:'',days:{},batch:a[0],faculty:a[1]};}});}
   var dates=Object.keys(dateSet).sort();
   var arr=Object.keys(students).map(function(k){return students[k];});
   arr.forEach(function(s){var pr=0,ab=0;dates.forEach(function(d){if(s.days[d]==='Present')pr++;else if(s.days[d]==='Absent')ab++;});
@@ -440,7 +462,7 @@ function renderClass(){
    '<div class="r"><button class="btn sm ghost" id="clr">ফিল্টার মুছুন</button><button class="btn sm" id="bp">🖨️ Print</button><button class="btn sm green" id="bx">📗 Excel</button><button class="btn sm ghost" id="bc">📄 CSV</button></div></div>'+
    '<div class="stats"><div class="stat s1"><b>'+d.list.length+'</b><span>Total Students</span></div><div class="stat s2"><b>'+col+'</b><span>Collegiate (≥'+TH+'%)</span></div><div class="stat s3"><b>'+non+'</b><span>Non-Collegiate</span></div></div>'+
    '<div class="hint no-print" style="margin:0 0 8px">কলামের হেডারে ⇅ চাপলে Sort, ▾ চাপলে Filter। তারিখের হেডারে ক্লিক করলে সেদিন Absent/Present-ওয়ালা দেখা যাবে। যেকোনো সারিতে ক্লিক করলে ছাত্রের রিপোর্ট খুলবে।</div>'+
-   '<div class="tw" id="tw"><table><thead><tr>'+
+   '<div class="tw" id="tw"><table class="ct"><thead><tr>'+
    COLS.map(function(c){var k=c[0],on=sortK===k,fo=colf[k]!==undefined&&colf[k]!=='';
      return '<th data-k="'+k+'"><span class="cell">'+c[1]+'<span class="so'+(on?' on':'')+'" data-so="'+k+'">'+(on?(sortDir>0?'▲':'▼'):'⇅')+'</span><span class="fi'+(fo?' on':'')+'" data-fi="'+k+'">▾</span></span></th>';}).join('')+
    d.dates.map(function(dt){var f=dateF[dt];return '<th class="dt'+(f==='A'?' fa':f==='P'?' fp':'')+'" data-d="'+dt+'" title="'+fmtBn(dt)+'"><span class="v">'+fmtBn(dt).slice(0,5)+'-'+dt.slice(2,4)+'</span></th>';}).join('')+
@@ -535,7 +557,7 @@ function searchView(text){
 }
 
 /* ============================ student A4 report ============================ */
-function studentView(key,back,sq){
+async function studentView(key,back,sq){
   var a=key.split('|'),batch=a[0],faculty=a[1],roll=a[2];
   var list=rows.filter(function(r){return r.batch===batch&&r.faculty===faculty&&String(r.roll)===roll;});
   if(sq&&(sq.year.length||sq.month.length)){list=list.filter(function(r){var d=parseIso(r.class_date);return(!sq.year.length||sq.year.indexOf(String(d.getFullYear()))>=0)&&(!sq.month.length||sq.month.indexOf(d.getMonth())>=0);});}
@@ -547,7 +569,9 @@ function studentView(key,back,sq){
     var mk=r.class_date.slice(0,7),m=byM[mk]||(byM[mk]={k:mk,p:0,a:0});if(P)m.p++;if(A)m.a++;});
   var p=pct(pr,ab),status=p===null?'—':p>=TH?'Collegiate':'Non-Collegiate';
   var dates=list.slice().sort(function(x,y){return x.class_date<y.class_date?-1:1;});
-  var dense=dates.length>60;
+  var tch=[];
+  try{tch=await rpc('assigned_teachers',{b:batch,f:faculty,r:roll});}catch(e){tch=[];}
+  var mk=markOf(p);
   var hasFather=meta.has&&(meta.fname||meta.fmobile);
   var rowsC=Object.keys(byC).map(function(k){return byC[k];}).sort(function(x,y){return x.d.localeCompare(y.d);});
   var rowsM=Object.keys(byM).sort().map(function(k){return byM[k];});
@@ -556,14 +580,13 @@ function studentView(key,back,sq){
    '<div class="sh-info"><div><span>নাম</span><b>'+esc(nm||'—')+'</b></div><div><span>Roll</span><b>'+esc(roll)+'</b></div>'+
    '<div><span>Batch</span><b>'+esc(batch)+'</b></div><div><span>Faculty</span><b>'+esc(faculty)+'</b></div>'+
    '<div><span>মোবাইল</span><b>'+esc(mb||'—')+'</b></div><div><span>সময়কাল</span><b>'+(dates.length?esc(fmtBn(dates[0].class_date)+' – '+fmtBn(dates[dates.length-1].class_date)):'—')+'</b></div>'+
+   '<div><span>দায়িত্বপ্রাপ্ত শিক্ষক</span><b>'+(tch.length?tch.map(function(t){return esc(t.full_name||t.email||'—');}).join(', '):'—')+'</b></div><div><span>শিক্ষকের মোবাইল</span><b>'+(tch.length?tch.map(function(t){return esc(t.mobile||'—');}).join(', '):'—')+'</b></div>'+
    (hasFather?'<div><span>বাবার নাম</span><b>'+esc(meta.fname||'—')+'</b></div><div><span>বাবার মোবাইল</span><b>'+esc(meta.fmobile||'—')+'</b></div>':'')+'</div>'+
-   '<div class="sh-sum"><div class="a"><b>'+(pr+ab)+'</b><span>মোট ক্লাস</span></div><div class="b"><b style="color:#146c3a">'+pr+'</b><span>উপস্থিত</span></div><div class="c"><b style="color:#a11a1a">'+ab+'</b><span>অনুপস্থিত</span></div><div class="d"><b>'+(p===null?'-':p+'%')+'</b><span>'+status+'</span></div></div>'+
+   '<div class="sh-sum"><div class="a"><b>'+(pr+ab)+'</b><span>মোট ক্লাস</span></div><div class="b"><b style="color:#146c3a">'+pr+'</b><span>উপস্থিত</span></div><div class="c"><b style="color:#a11a1a">'+ab+'</b><span>অনুপস্থিত</span></div><div class="d"><b>'+(p===null?'-':p+'%')+'</b><span>'+status+'</span></div><div class="e"><b>'+(mk===''?'-':mk+'/5')+'</b><span>হাজিরার মার্ক</span></div></div>'+
    '<div class="sh-t">বিষয়ভিত্তিক হাজিরা</div><table><tr><th>Department / Subject</th><th>Section</th><th>ক্লাস</th><th>Present</th><th>Absent</th><th>%</th></tr>'+
    rowsC.map(function(c){return '<tr><td class="l">'+esc(c.d)+'</td><td>'+esc(c.s)+'</td><td>'+(c.p+c.a)+'</td><td>'+c.p+'</td><td>'+c.a+'</td><td>'+(pct(c.p,c.a)===null?'':pct(c.p,c.a)+'%')+'</td></tr>';}).join('')+'</table>'+
    '<div class="sh-t">মাসভিত্তিক হাজিরা</div><table><tr><th>মাস</th><th>ক্লাস</th><th>Present</th><th>Absent</th><th>%</th></tr>'+
    rowsM.map(function(m){var d=parseIso(m.k+'-01');return '<tr><td class="l">'+MONTHS_BN[d.getMonth()]+' '+d.getFullYear()+'</td><td>'+(m.p+m.a)+'</td><td>'+m.p+'</td><td>'+m.a+'</td><td>'+(pct(m.p,m.a)===null?'':pct(m.p,m.a)+'%')+'</td></tr>';}).join('')+'</table>'+
-   '<div class="sh-t">তারিখ অনুযায়ী (P = উপস্থিত, A = অনুপস্থিত)</div><div class="dates"'+(dense?' style="font-size:6.6pt"':'')+'>'+
-   dates.map(function(r){return '<i class="'+(r.status==='Present'?'P':'A')+'">'+fmtShort(r.class_date)+' '+(r.status==='Present'?'P':'A')+'</i>';}).join('')+'</div>'+
    '<div class="sh-fill"></div>'+
    '<div class="sh-foot"><div>প্রস্তুতের সময়: '+nowText()+'<br>Collegiate সীমা: '+TH+'%</div><div class="sig"><div class="ln"></div><b>'+esc(PRINCIPAL)+'</b></div></div></div></div>';
   page('<div class="bar no-print"><div class="l"><button class="btn sm ghost" id="back">← ফিরে যান</button></div><div class="r"><button class="btn sm" id="sp">🖨️ Print (A4)</button></div></div>'+sheet,lastSearch,'');
