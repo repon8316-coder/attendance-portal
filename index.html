@@ -330,7 +330,7 @@ function topbar(query){
    '<div class="sbox'+(query?' has':'')+'"><span class="ic">🔍</span><input id="gs" type="search" autocomplete="off" placeholder="Search: ব্যাচ, সাল, রোল, নাম, মাস…" value="'+esc(query||'')+'"><button class="x" id="gsx" title="মুছুন">✕</button></div>'+
    '<div class="who"><button class="chip" id="whoBtn"><i>'+esc(ini)+'</i><span>'+esc(nm)+'</span></button>'+
    '<div class="menu" id="menu"><div class="role">'+esc(session?session.user.email:'')+' · '+(isAdmin()?'Admin':'Teacher')+'</div>'+
-   (isAdmin()?'<button id="mUp">📤 শিক্ষার্থী Excel আপলোড</button><button id="mDel">🗑️ ডেটা মুছুন</button>':'')+
+   (isAdmin()?'<button id="mUp">📤 শিক্ষার্থী Excel আপলোড</button><button id="mTe">👩‍🏫 শিক্ষক যোগ/মোছা</button><button id="mDel">🗑️ ডেটা মুছুন</button>':'')+
    '<button id="mRef">🔄 ডেটা রিফ্রেশ</button><button id="mOut">🚪 Sign out</button></div></div>'+
    '</div></div>';
 }
@@ -347,6 +347,7 @@ function bindChrome(){
   document.getElementById('mOut').onclick=function(){saveSession(null);rows=[];profile=null;roster={};loginView();};
   document.getElementById('mRef').onclick=function(){start(true);};
   var up=document.getElementById('mUp');if(up)up.onclick=uploadModal;
+  var te=document.getElementById('mTe');if(te)te.onclick=teacherModal;
   var dl=document.getElementById('mDel');if(dl)dl.onclick=deleteModal;
 }
 function page(inner,query,cls){setView(topbar(query)+'<div class="wrap">'+inner+'</div>',cls);bindChrome();}
@@ -625,6 +626,73 @@ function uploadModal(){
     catch(e){document.getElementById('xp').innerHTML='<div class="err">'+esc(e.message)+'</div>';this.disabled=false;this.textContent='আবার চেষ্টা';}};
 }
 
+
+
+/* ============================ admin: teachers ============================ */
+async function callTeacher(body){
+  var t=await token();
+  var r=await fetch(SB_URL+'/functions/v1/manage-teacher',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  var j={};try{j=await r.json();}catch(e){}
+  return{ok:r.ok&&j.ok===true,j:j};
+}
+async function teacherModal(){
+  if(!isAdmin())return;
+  var ov=document.createElement('div');ov.className='ov';
+  ov.innerHTML='<div class="modal" style="max-width:640px"><h3>👩‍🏫 শিক্ষক যোগ / মোছা</h3><div id="tl" class="hint">লোড হচ্ছে…</div>'+
+   '<div class="sec" style="margin-top:12px">একজন যোগ করুন</div>'+
+   '<div class="grid"><div class="fld"><label>নাম</label><input id="tn"></div><div class="fld"><label>মোবাইল</label><input id="tm"></div><div class="fld"><label>ইমেইল</label><input id="te" type="email"></div><div class="fld"><label>পাসওয়ার্ড (কমপক্ষে ৮)</label><input id="tp"></div></div>'+
+   '<div class="row-actions"><button class="btn sm" id="tadd">যোগ করুন</button></div>'+
+   '<div class="sec" style="margin-top:14px">Excel থেকে অনেকজন</div>'+
+   '<div class="hint">.xlsx ফাইল; প্রথম সারিতে কলাম: <b>Name, Mobile, Email, Password</b>। Email ও Password আবশ্যক, Password কমপক্ষে ৮ অক্ষর। আগে থেকে থাকা Email বাদ যাবে।</div>'+
+   '<div class="drop"><input type="file" id="tf" accept=".xlsx,.xls"></div>'+
+   '<div class="row-actions"><button class="btn sm ghost" id="ts">নমুনা Excel</button><button class="btn sm" id="tgo" disabled>ফাইল থেকে যোগ করুন</button></div>'+
+   '<div id="tmsg" class="hint"></div><div class="row-actions"><button class="btn sm ghost" id="tc">বন্ধ করুন</button></div></div>';
+  document.body.appendChild(ov);
+  var msg=function(h){document.getElementById('tmsg').innerHTML=h;},parsed=[];
+  document.getElementById('tc').onclick=function(){ov.remove();};
+  async function list(){
+    try{var L=await rest('profiles',{select:'id,email,full_name,mobile,role',role:'eq.teacher',order:'email.asc'});
+      document.getElementById('tl').innerHTML=L.length?'<div style="max-height:200px;overflow:auto">'+L.map(function(x){return '<div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)"><div style="flex:1"><b>'+esc(x.full_name||x.email)+'</b><br><small>'+esc(x.email)+(x.mobile?' · '+esc(x.mobile):'')+'</small></div><button class="btn sm ghost" data-del="'+x.id+'" data-nm="'+esc(x.full_name||x.email)+'" style="color:#b42318">🗑️ মুছুন</button></div>';}).join('')+'</div>':'এখনো কোনো শিক্ষক নেই।';
+      document.querySelectorAll('[data-del]').forEach(function(b){b.onclick=function(){delT(b.getAttribute('data-del'),b.getAttribute('data-nm'));};});
+    }catch(e){document.getElementById('tl').textContent=e.message;}
+  }
+  async function delT(id,nm){
+    if(!confirm(nm+' কে মুছবেন? তিনি আর লগইন করতে পারবেন না।'))return;
+    var r=await callTeacher({action:'delete',user_id:id});
+    if(!r.ok&&r.j.has_data){if(!confirm('এই শিক্ষকের নেওয়া '+r.j.count+'টি হাজিরার রেকর্ড আছে। শিক্ষক মুছলে সেগুলোও চিরতরে মুছে যাবে। তবুও মুছবেন?'))return;
+      r=await callTeacher({action:'delete',user_id:id,delete_data:'yes'});}
+    if(!r.ok){msg('<div class="err">'+esc(r.j.error||'মোছা যায়নি।')+'</div>');return;}
+    toast('শিক্ষক মোছা হয়েছে।');list();
+  }
+  document.getElementById('tadd').onclick=async function(){
+    var b={action:'create',full_name:document.getElementById('tn').value.trim(),mobile:document.getElementById('tm').value.trim(),email:document.getElementById('te').value.trim(),password:document.getElementById('tp').value};
+    this.disabled=true;var r=await callTeacher(b);this.disabled=false;
+    if(!r.ok){msg('<div class="err">'+esc(r.j.error||'যোগ করা যায়নি।')+'</div>');return;}
+    ['tn','tm','te','tp'].forEach(function(i){document.getElementById(i).value='';});msg('✓ যোগ হয়েছে।');list();
+  };
+  document.getElementById('ts').onclick=function(){var ws=XLSX.utils.aoa_to_sheet([['Name','Mobile','Email','Password'],['মোঃ করিম','01712345678','karim@gmail.com','Karim@2026']]),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Teachers');XLSX.writeFile(wb,'teacher_template.xlsx');};
+  document.getElementById('tf').onchange=function(){
+    var f=this.files[0];if(!f)return;var rd=new FileReader();
+    rd.onload=function(){try{
+      var wb=XLSX.read(rd.result,{type:'array'}),a=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''});
+      var h=a[0].map(function(x){return String(x).toLowerCase();});
+      function fi(t){return h.findIndex(t);}
+      var iE=fi(function(x){return x.indexOf('mail')>=0||x.indexOf('ইমেইল')>=0;}),iP=fi(function(x){return x.indexOf('pass')>=0||x.indexOf('পাসওয়ার্ড')>=0;}),
+        iM=fi(function(x){return x.indexOf('mobile')>=0||x.indexOf('phone')>=0||x.indexOf('মোবাইল')>=0;}),iN=fi(function(x){return x.indexOf('name')>=0||x.indexOf('নাম')>=0;});
+      if(iE<0||iP<0)throw new Error('Email ও Password কলাম পাওয়া যায়নি।');
+      var seen={};parsed=[];
+      a.slice(1).forEach(function(r){var e=String(r[iE]||'').trim().toLowerCase();if(!e||seen[e])return;seen[e]=1;var m=iM>=0?String(r[iM]).trim():'';if(/^1\d{9}$/.test(m))m='0'+m;
+        parsed.push({action:'create',email:e,password:String(r[iP]||''),full_name:iN>=0?String(r[iN]).trim():'',mobile:m});});
+      msg(parsed.length?'<b>'+parsed.length+'</b> জন শিক্ষক পাওয়া গেছে।':'কোনো শিক্ষক পাওয়া যায়নি।');document.getElementById('tgo').disabled=!parsed.length;
+    }catch(e){msg('<div class="err">'+esc(e.message)+'</div>');}};
+    rd.readAsArrayBuffer(f);};
+  document.getElementById('tgo').onclick=async function(){
+    this.disabled=true;var ok=0,bad=[];
+    for(var i=0;i<parsed.length;i++){msg('যোগ হচ্ছে… '+i+' / '+parsed.length);var r=await callTeacher(parsed[i]);if(r.ok)ok++;else bad.push(esc(parsed[i].email)+' — '+esc(r.j.error||'ব্যর্থ'));}
+    msg('<b>'+ok+'</b> জন যোগ হয়েছে।'+(bad.length?'<div class="err">'+bad.length+'জন হয়নি:<br>'+bad.join('<br>')+'</div>':' ✓'));list();
+  };
+  list();
+}
 
 /* ============================ admin: delete data ============================ */
 function deleteModal(){
