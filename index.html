@@ -330,7 +330,7 @@ function topbar(query){
    '<div class="sbox'+(query?' has':'')+'"><span class="ic">🔍</span><input id="gs" type="search" autocomplete="off" placeholder="Search: ব্যাচ, সাল, রোল, নাম, মাস…" value="'+esc(query||'')+'"><button class="x" id="gsx" title="মুছুন">✕</button></div>'+
    '<div class="who"><button class="chip" id="whoBtn"><i>'+esc(ini)+'</i><span>'+esc(nm)+'</span></button>'+
    '<div class="menu" id="menu"><div class="role">'+esc(session?session.user.email:'')+' · '+(isAdmin()?'Admin':'Teacher')+'</div>'+
-   (isAdmin()?'<button id="mUp">📤 শিক্ষার্থী Excel আপলোড</button>':'')+
+   (isAdmin()?'<button id="mUp">📤 শিক্ষার্থী Excel আপলোড</button><button id="mDel">🗑️ ডেটা মুছুন</button>':'')+
    '<button id="mRef">🔄 ডেটা রিফ্রেশ</button><button id="mOut">🚪 Sign out</button></div></div>'+
    '</div></div>';
 }
@@ -347,6 +347,7 @@ function bindChrome(){
   document.getElementById('mOut').onclick=function(){saveSession(null);rows=[];profile=null;roster={};loginView();};
   document.getElementById('mRef').onclick=function(){start(true);};
   var up=document.getElementById('mUp');if(up)up.onclick=uploadModal;
+  var dl=document.getElementById('mDel');if(dl)dl.onclick=deleteModal;
 }
 function page(inner,query,cls){setView(topbar(query)+'<div class="wrap">'+inner+'</div>',cls);bindChrome();}
 
@@ -583,8 +584,6 @@ async function studentView(key,back,sq){
    '<div><span>দায়িত্বপ্রাপ্ত শিক্ষক</span><b>'+(tch.length?tch.map(function(t){return esc(t.full_name||t.email||'—');}).join(', '):'—')+'</b></div><div><span>শিক্ষকের মোবাইল</span><b>'+(tch.length?tch.map(function(t){return esc(t.mobile||'—');}).join(', '):'—')+'</b></div>'+
    (hasFather?'<div><span>বাবার নাম</span><b>'+esc(meta.fname||'—')+'</b></div><div><span>বাবার মোবাইল</span><b>'+esc(meta.fmobile||'—')+'</b></div>':'')+'</div>'+
    '<div class="sh-sum"><div class="a"><b>'+(pr+ab)+'</b><span>মোট ক্লাস</span></div><div class="b"><b style="color:#146c3a">'+pr+'</b><span>উপস্থিত</span></div><div class="c"><b style="color:#a11a1a">'+ab+'</b><span>অনুপস্থিত</span></div><div class="d"><b>'+(p===null?'-':p+'%')+'</b><span>'+status+'</span></div><div class="e"><b>'+(mk===''?'-':mk+'/5')+'</b><span>হাজিরার মার্ক</span></div></div>'+
-   '<div class="sh-t">বিষয়ভিত্তিক হাজিরা</div><table><tr><th>Department / Subject</th><th>Section</th><th>ক্লাস</th><th>Present</th><th>Absent</th><th>%</th></tr>'+
-   rowsC.map(function(c){return '<tr><td class="l">'+esc(c.d)+'</td><td>'+esc(c.s)+'</td><td>'+(c.p+c.a)+'</td><td>'+c.p+'</td><td>'+c.a+'</td><td>'+(pct(c.p,c.a)===null?'':pct(c.p,c.a)+'%')+'</td></tr>';}).join('')+'</table>'+
    '<div class="sh-t">মাসভিত্তিক হাজিরা</div><table><tr><th>মাস</th><th>ক্লাস</th><th>Present</th><th>Absent</th><th>%</th></tr>'+
    rowsM.map(function(m){var d=parseIso(m.k+'-01');return '<tr><td class="l">'+MONTHS_BN[d.getMonth()]+' '+d.getFullYear()+'</td><td>'+(m.p+m.a)+'</td><td>'+m.p+'</td><td>'+m.a+'</td><td>'+(pct(m.p,m.a)===null?'':pct(m.p,m.a)+'%')+'</td></tr>';}).join('')+'</table>'+
    '<div class="sh-fill"></div>'+
@@ -624,6 +623,36 @@ function uploadModal(){
   document.getElementById('xgo').onclick=async function(){this.disabled=true;this.textContent='আপলোড হচ্ছে…';
     try{await upsertRoster(parsed);ov.remove();toast(parsed.length+' জন শিক্ষার্থীর তথ্য সংরক্ষিত হয়েছে।');await start(true);}
     catch(e){document.getElementById('xp').innerHTML='<div class="err">'+esc(e.message)+'</div>';this.disabled=false;this.textContent='আবার চেষ্টা';}};
+}
+
+
+/* ============================ admin: delete data ============================ */
+function deleteModal(){
+  var all=allBF(),bs=uniq(all,'batch');
+  if(!bs.length){toast('মোছার মতো কোনো ডেটা নেই।');return;}
+  var ov=document.createElement('div');ov.className='ov';
+  ov.innerHTML='<div class="modal"><h3>🗑️ ডেটা মুছুন</h3><div class="hint">বাছাই করা ছাত্রদের হাজিরা ও তথ্য (নাম, মোবাইল, বাবার তথ্য) <b>চিরতরে</b> মুছে যাবে।</div>'+
+   '<div class="fld"><label>সাল / Batch</label><select id="db">'+bs.map(function(x,i){return '<option'+(i===bs.length-1?' selected':'')+'>'+esc(x)+'</option>';}).join('')+'</select></div>'+
+   '<div class="fld"><label>Faculty</label><select id="df"></select></div>'+
+   '<div class="fld"><label>রোল থেকে – পর্যন্ত (ফাঁকা = পুরো ক্লাস)</label><div style="display:flex;gap:8px"><input id="dr1" type="number" placeholder="থেকে"><input id="dr2" type="number" placeholder="পর্যন্ত"></div></div>'+
+   '<div class="fld"><label>নিশ্চিত করতে DELETE লিখুন</label><input id="dw" autocomplete="off"></div><div id="dm" class="err"></div>'+
+   '<div class="row-actions"><button class="btn sm" id="dgo" style="background:#b42318">মুছুন</button><button class="btn sm ghost" id="dc">বন্ধ করুন</button></div></div>';
+  document.body.appendChild(ov);
+  function facs(){var b=document.getElementById('db').value,f=uniq(all.filter(function(r){return r.batch===b;}),'faculty');
+    document.getElementById('df').innerHTML='<option value="">সব Faculty</option>'+f.map(function(x){return '<option>'+esc(x)+'</option>';}).join('');}
+  facs();document.getElementById('db').onchange=facs;
+  document.getElementById('dc').onclick=function(){ov.remove();};
+  document.getElementById('dgo').onclick=async function(){
+    var m=document.getElementById('dm'),r1=document.getElementById('dr1').value.trim(),r2=document.getElementById('dr2').value.trim();
+    if(document.getElementById('dw').value.trim().toUpperCase()!=='DELETE'){m.textContent='নিশ্চিত করতে DELETE লিখুন।';return;}
+    if((r2&&!r1)||(r1&&r2&&+r2<+r1)){m.textContent='রোলের সংখ্যা ঠিক করে লিখুন।';return;}
+    this.disabled=true;this.textContent='মোছা হচ্ছে…';
+    try{var t=await token();
+      var res=await fetch(SB_URL+'/rest/v1/rpc/admin_delete_students',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+t,'Content-Type':'application/json'},
+        body:JSON.stringify({b:document.getElementById('db').value,f:document.getElementById('df').value||null,r_from:r1?+r1:null,r_to:r1?(r2?+r2:+r1):null})});
+      if(!res.ok)throw new Error('মোছা যায়নি ('+res.status+')');
+      var j=await res.json();ov.remove();toast('মোছা হয়েছে: হাজিরা '+j.attendance+'টি, ছাত্রের তথ্য '+j.roster+'টি।');await start(false);
+    }catch(e){m.textContent=e.message;this.disabled=false;this.textContent='আবার চেষ্টা';}};
 }
 
 /* ============================ start ============================ */
