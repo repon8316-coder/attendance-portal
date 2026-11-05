@@ -685,10 +685,22 @@ async function teacherModal(){
   var msg=function(h){document.getElementById('tmsg').innerHTML=h;},parsed=[];
   document.getElementById('tc').onclick=function(){ov.remove();};
   async function list(){
-    try{var L=await rest('profiles',{select:'id,email,full_name,mobile,role',role:'eq.teacher',order:'email.asc'});
-      document.getElementById('tl').innerHTML=L.length?'<div style="max-height:200px;overflow:auto">'+L.map(function(x){return '<div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)"><div style="flex:1"><b>'+esc(x.full_name||x.email)+'</b><br><small>'+esc(x.email)+(x.mobile?' · '+esc(x.mobile):'')+'</small></div><button class="btn sm ghost" data-del="'+x.id+'" data-nm="'+esc(x.full_name||x.email)+'" style="color:#b42318">🗑️ মুছুন</button></div>';}).join('')+'</div>':'এখনো কোনো শিক্ষক নেই।';
+    try{var L=await rest('profiles',{select:'id,email,full_name,mobile,role',role:'in.(teacher,admin)',order:'role.asc,email.asc'});
+      var me=session&&session.user&&session.user.id;
+      document.getElementById('tl').innerHTML=L.length?'<div style="max-height:220px;overflow:auto">'+L.map(function(x){var ad=x.role==='admin',self=x.id===me;
+        return '<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);flex-wrap:wrap"><div style="flex:1;min-width:160px"><b>'+esc(x.full_name||x.email)+'</b>'+(ad?' <span class="tag" style="background:#fde68a;color:#7a4b00">Admin</span>':'')+(self?' <small>(আপনি)</small>':'')+'<br><small>'+esc(x.email)+(x.mobile?' · '+esc(x.mobile):'')+'</small></div>'+
+        (self?'':'<button class="btn sm ghost" data-role="'+x.id+'" data-to="'+(ad?'teacher':'admin')+'" data-nm="'+esc(x.full_name||x.email)+'">'+(ad?'⬇ Teacher করুন':'⭐ Admin বানান')+'</button>')+
+        (ad?'':'<button class="btn sm ghost" data-del="'+x.id+'" data-nm="'+esc(x.full_name||x.email)+'" style="color:#b42318">🗑️ মুছুন</button>')+'</div>';}).join('')+'</div>':'এখনো কোনো শিক্ষক নেই।';
       document.querySelectorAll('[data-del]').forEach(function(b){b.onclick=function(){delT(b.getAttribute('data-del'),b.getAttribute('data-nm'));};});
+      document.querySelectorAll('[data-role]').forEach(function(b){b.onclick=function(){roleT(b.getAttribute('data-role'),b.getAttribute('data-to'),b.getAttribute('data-nm'));};});
     }catch(e){document.getElementById('tl').textContent=e.message;}
+  }
+  async function roleT(id,to,nm){
+    var q=to==='admin'?nm+' কে Admin বানাবেন? তিনি সব শিক্ষক, ছাত্রের তথ্য ও হাজিরা দেখতে, বদলাতে ও মুছতে পারবেন।':nm+' কে আবার সাধারণ শিক্ষক করবেন? তিনি Admin-এর ক্ষমতা হারাবেন।';
+    if(!confirm(q))return;
+    var r=await callTeacher({action:'set_role',user_id:id,role:to});
+    if(!r.ok){msg('<div class="err">'+esc(r.j.error||'বদলানো যায়নি।')+'</div>');return;}
+    toast(to==='admin'?'Admin বানানো হয়েছে।':'Teacher করা হয়েছে।');list();
   }
   async function delT(id,nm){
     if(!confirm(nm+' কে মুছবেন? তিনি আর লগইন করতে পারবেন না।'))return;
