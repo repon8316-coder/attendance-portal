@@ -1,0 +1,1221 @@
+<!doctype html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body><title>OMR মূল্যায়ন</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600&family=Tiro+Bangla&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* layout: one working column, sticky tab bar; the scanned sheet is the hero of the review screen */
+:root{
+  --bg:#eef0f3; --surface:#ffffff; --sunk:#e4e7ec; --ink:#14171d; --muted:#5b6170; --line:#d5d9e0;
+  --accent:#1d3f8f; --accent-ink:#ffffff; --accent-soft:#e3e9f7;
+  --ok:#17784a; --ok-soft:#dff2e8; --bad:#c2312b; --bad-soft:#fae3e1; --warn:#a85f00; --warn-soft:#fbeed6;
+  --sheet-red:#d8322f;
+  --f-body:'Hind Siliguri','Noto Sans Bengali',system-ui,sans-serif;
+  --f-display:'Tiro Bangla','Noto Serif Bengali',Georgia,serif;
+  --f-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#101216; --surface:#191c22; --sunk:#22262e; --ink:#e9ebef; --muted:#9aa1ae; --line:#2e333d;
+  --accent:#8fb0ff; --accent-ink:#0d1530; --accent-soft:#1f2a47;
+  --ok:#5cc98f; --ok-soft:#173326; --bad:#ff7a70; --bad-soft:#3a1c1a; --warn:#f0b450; --warn-soft:#3a2b12; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101216; --surface:#191c22; --sunk:#22262e; --ink:#e9ebef; --muted:#9aa1ae; --line:#2e333d;
+  --accent:#8fb0ff; --accent-ink:#0d1530; --accent-soft:#1f2a47;
+  --ok:#5cc98f; --ok-soft:#173326; --bad:#ff7a70; --bad-soft:#3a1c1a; --warn:#f0b450; --warn-soft:#3a2b12; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+#reviewArea{scroll-margin-top:120px}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.55;margin:0}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top,0px);z-index:9}
+.brand{display:flex;align-items:center;gap:12px;padding-block:10px 4px;flex-wrap:wrap}
+.brand h1{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0;letter-spacing:.2px}
+.brand .mark{width:26px;height:26px;border:2px solid var(--ink);border-radius:4px;display:grid;place-items:center}
+.brand .mark i{width:12px;height:12px;border-radius:50%;background:var(--ink);display:block}
+.exam-pill{margin-left:auto;font-size:14px;color:var(--muted);display:flex;gap:6px;align-items:center;min-width:0}
+.exam-pill select{max-width:220px}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:0}
+nav.tabs a{padding:8px 14px;text-decoration:none;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap;font-weight:500}
+nav.tabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+main{padding-block:20px 60px}
+section.view{display:grid;gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+h2{font-family:var(--f-display);font-weight:400;font-size:24px;margin:0;text-wrap:balance}
+h3{font-size:17px;margin:0 0 8px;font-weight:600}
+.sub{color:var(--muted);font-size:14px;margin:0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+label.f{display:grid;gap:4px;font-size:14px;color:var(--muted)}
+input[type=text],input[type=number],select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0;width:100%}
+textarea{font-family:var(--f-mono);font-size:14px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chk{display:flex;gap:8px;align-items:center;font-size:15px;color:var(--ink)}
+button,.btn{font:inherit;font-weight:500;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:9px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+button:hover{border-color:var(--muted)}
+button.primary,.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.danger{color:var(--bad);border-color:var(--bad)}
+button.ghost{background:transparent;border-color:transparent;color:var(--accent);padding-inline:6px}
+button:disabled{opacity:.5;cursor:default}
+.big{padding:16px 18px;font-size:17px;border-radius:12px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:2px 10px;border-radius:999px;font-weight:500}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.n{background:var(--sunk);color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+/* answer key grid */
+.settabs{display:flex;gap:6px;flex-wrap:wrap}
+.settabs button{min-width:52px}
+.settabs button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.keygrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:4px 14px;margin-top:10px}
+.krow{display:flex;align-items:center;gap:6px;padding:2px 0}
+.krow .qn{width:30px;font-family:var(--f-mono);font-size:13px;color:var(--muted);text-align:right}
+.ob{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);font-size:13px;font-weight:600;padding:0;color:var(--muted)}
+.ob[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.krow.flag .qn{color:var(--warn);font-weight:700}
+.progress{height:6px;background:var(--sunk);border-radius:6px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--accent)}
+/* scan */
+.scanbtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.tips{margin:0;padding-left:20px;color:var(--muted);font-size:14px;display:grid;gap:2px}
+.review{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:760px){.review{grid-template-columns:1fr}.review>.card{order:-1}.sheetbox{max-height:60vh}}
+.sheetbox{background:var(--sunk);border-radius:var(--r);padding:8px;overflow:auto;max-height:78vh}
+.sheetbox canvas{width:100%;height:auto;display:block;border-radius:4px;background:#fff}
+.scorebig{display:flex;align-items:baseline;gap:8px}
+.scorebig b{font-family:var(--f-mono);font-size:42px;line-height:1}
+.scorebig span{color:var(--muted)}
+.tally{display:flex;gap:6px;flex-wrap:wrap}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:5px}
+.chip{border:1px solid var(--line);border-radius:7px;padding:4px 6px;display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:13px;background:var(--surface);cursor:pointer;color:var(--ink)}
+.chip small{color:var(--muted)}
+.chip.correct{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.chip.wrong{background:var(--bad-soft);border-color:transparent;color:var(--bad)}
+.chip.doubt{outline:2px solid var(--warn);outline-offset:-1px}
+.chip.sel{outline:2px solid var(--accent)}
+.editor{border:1px dashed var(--line);border-radius:8px;padding:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.alert{border-radius:8px;padding:10px 12px;font-size:15px}
+.alert.warn{background:var(--warn-soft);color:var(--warn)} .alert.bad{background:var(--bad-soft);color:var(--bad)} .alert.ok{background:var(--ok-soft);color:var(--ok)} .alert.info{background:var(--accent-soft);color:var(--accent)}
+.queue{font-size:14px;color:var(--muted)}
+/* camera */
+.cam{position:relative;background:#000;border-radius:var(--r);overflow:hidden;max-height:75vh;display:grid;place-items:center}
+.cam video{width:100%;max-height:75vh;object-fit:contain;display:block}
+.cam canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.camstat{position:absolute;left:10px;right:10px;bottom:10px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.camstat span{background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:8px;font-size:14px}
+/* results */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.stat{background:var(--sunk);border-radius:8px;padding:10px 12px}
+.stat b{display:block;font-family:var(--f-mono);font-size:24px}
+.stat span{font-size:13px;color:var(--muted)}
+.tblwrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{font-size:13px;color:var(--muted);font-weight:500}
+td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+tr.click{cursor:pointer} tr.click:hover td{background:var(--sunk)}
+.bars{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 16px}
+.bar{display:grid;grid-template-columns:30px 1fr 40px;gap:6px;align-items:center;font-size:13px}
+.bar .t{height:8px;background:var(--sunk);border-radius:4px;overflow:hidden}
+.bar .t i{display:block;height:100%}
+.empty{text-align:center;padding:28px 12px;color:var(--muted)}
+.sheetprev{background:#fff;border-radius:8px;overflow:hidden;border:1px solid var(--line);max-width:520px}
+.sheetprev svg{width:100%;height:auto;display:block}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:10px;z-index:20;font-size:15px;max-width:90vw}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--bad-soft);color:var(--bad);padding:8px 10px;border-radius:8px}
+@media (prefers-reduced-motion:no-preference){.chip,button{transition:background .12s,border-color .12s}}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><i></i></div>
+      <h1>OMR মূল্যায়ন</h1>
+      <div class="exam-pill"><label for="examSel">পরীক্ষা:</label><select id="examSel"></select></div>
+    </div>
+    <nav class="tabs" aria-label="অংশ">
+      <a href="#scan" data-v="scan">স্ক্যান</a>
+      <a href="#exam" data-v="exam">উত্তরমালা</a>
+      <a href="#results" data-v="results">ফলাফল</a>
+      <a href="#sheet" data-v="sheet">উত্তরপত্র</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- SCAN -->
+  <section class="view" id="v-scan">
+    <div class="row" style="justify-content:space-between">
+      <div><h2>উত্তরপত্র স্ক্যান</h2><p class="sub" id="scanSub"></p></div>
+    </div>
+    <div id="keyWarn"></div>
+    <div class="scanbtns" id="scanBtns">
+      <label class="btn primary big" for="camFile">ছবি তুলুন</label>
+      <label class="btn big" for="galFile">গ্যালারি থেকে (একাধিক)</label>
+      <button class="big" id="liveBtn" type="button">লাইভ ক্যামেরা (স্বয়ংক্রিয়)</button>
+    </div>
+    <input id="camFile" type="file" accept="image/*" capture="environment" hidden>
+    <input id="galFile" type="file" accept="image/*" multiple hidden>
+    <label class="chk"><input type="checkbox" id="autoSave" checked> সন্দেহ না থাকলে সরাসরি সংরক্ষণ করো (দ্রুত ব্যাচ স্ক্যান)</label>
+    <div id="camArea" hidden>
+      <div class="cam"><video id="video" playsinline muted></video><canvas id="camOv"></canvas>
+        <div class="camstat"><span id="camMsg">শিটটি ফ্রেমে আনুন</span><button id="camStop" type="button">বন্ধ</button></div></div>
+    </div>
+    <div id="liveMsg"></div>
+    <div class="queue" id="queue"></div>
+    <div id="reviewArea"></div>
+    <div class="card" id="tipsCard">
+      <h3>নির্ভুল ফলাফলের জন্য</h3>
+      <ul class="tips">
+        <li>চার কোণার কালো চৌকো সহ পুরো শিট ফ্রেমে রাখুন।</li>
+        <li>শিট সমান জায়গায় রাখুন, ভাঁজ বা কোঁচকানো যেন না থাকে।</li>
+        <li>উজ্জ্বল আলোতে তুলুন, ফোন বা হাতের ছায়া যেন না পড়ে। ফ্ল্যাশ লাগবে না।</li>
+        <li>ক্যামেরা শিটের সোজা উপরে ধরুন। একটু কাত হলে বা উল্টো হলেও সমস্যা নেই।</li>
+        <li>অ্যাপ নিশ্চিত না হলে নিজে থেকে উত্তর ধরে নেয় না, হলুদ দাগ দিয়ে আপনাকে দেখায়।</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- EXAM / KEY -->
+  <section class="view" id="v-exam" hidden>
+    <div class="row" style="justify-content:space-between">
+      <div><h2>পরীক্ষা ও উত্তরমালা</h2><p class="sub">প্রশ্ন সংখ্যা যত দেবেন, অ্যাপ শুধু ততগুলো প্রশ্নই মূল্যায়ন করবে।</p></div>
+      <div class="row"><button id="newExam" type="button">নতুন পরীক্ষা</button></div>
+    </div>
+    <div class="card">
+      <div class="grid2">
+        <label class="f">পরীক্ষার নাম<input type="text" id="exName"></label>
+        <label class="f">প্রশ্ন সংখ্যা (১–১০০)<input type="number" id="exN" min="1" max="100"></label>
+        <label class="f">প্রতি সঠিক উত্তরে নম্বর<input type="number" id="exMark" step="0.25" min="0"></label>
+        <label class="f">প্রতি ভুলে কাটা (নেগেটিভ)<input type="number" id="exNeg" step="0.05" min="0"></label>
+      </div>
+      <div class="row" style="margin-top:12px;gap:18px">
+        <label class="chk"><input type="checkbox" id="exSets"> সেট কোড (ক/খ/গ/ঘ) অনুযায়ী আলাদা উত্তরমালা</label>
+        <label class="chk"><input type="checkbox" id="exMulti"> একাধিক দাগ হলে ভুল ধরা হবে (নেগেটিভসহ)</label>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h3 style="margin:0">উত্তরমালা</h3>
+        <div class="settabs" id="setTabs"></div>
+      </div>
+      <div class="row" style="margin-top:10px;gap:12px">
+        <div style="flex:1;min-width:180px"><div class="progress"><i id="keyProg"></i></div><p class="sub" id="keyCount" style="margin-top:4px"></p></div>
+        <label class="btn" for="keyFile">উত্তরমালা শিট স্ক্যান করুন</label>
+        <input id="keyFile" type="file" accept="image/*" hidden>
+        <button id="keyClear" type="button" class="ghost">মুছুন</button>
+      </div>
+      <div id="keyMsg"></div>
+      <label class="f" style="margin-top:12px">অথবা একসাথে লিখুন (যেমন: ABCDDCBA… , ফাঁকার জন্য -)<textarea id="keyText" rows="2" spellcheck="false"></textarea></label>
+      <div class="keygrid" id="keyGrid"></div>
+    </div>
+    <div class="card" id="dangerCard">
+      <div class="row" style="justify-content:space-between"><span class="sub">এই পরীক্ষা ও এর সব ফলাফল মুছে ফেলতে</span><button class="danger" id="delExam" type="button">পরীক্ষা মুছুন</button></div>
+      <div id="delConfirm"></div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section class="view" id="v-results" hidden>
+    <div class="row" style="justify-content:space-between">
+      <div><h2>ফলাফল</h2><p class="sub" id="resSub"></p></div>
+      <div class="row"><button id="csvBtn" type="button" class="primary">Excel (CSV) নামান</button><button id="bakBtn" type="button">ব্যাকআপ</button><label class="btn" for="bakFile">ব্যাকআপ ফেরত</label><input type="file" id="bakFile" accept=".json,application/json" hidden></div>
+    </div>
+    <div id="dlMsg"></div>
+    <div class="stats" id="stats"></div>
+    <div class="card"><div class="tblwrap" id="resTable"></div></div>
+    <div class="card"><h3>প্রশ্নভিত্তিক বিশ্লেষণ</h3><p class="sub" style="margin-bottom:10px">কত শতাংশ শিক্ষার্থী সঠিক উত্তর দিয়েছে। লাল দাগের প্রশ্নগুলো সবচেয়ে কঠিন ছিল, বা উত্তরমালায় ভুল আছে কিনা দেখে নিন।</p><div class="bars" id="bars"></div></div>
+  </section>
+
+  <!-- SHEET -->
+  <section class="view" id="v-sheet" hidden>
+    <div><h2>উত্তরপত্র (OMR শিট)</h2><p class="sub">এই অ্যাপ শুধু এই নকশার শিট পড়ে। A4 কাগজে ১০০% মাপে (Actual size) প্রিন্ট করুন, লাল কালিতে বা রঙিন প্রিন্টারে।</p></div>
+    <div class="card">
+      <div class="grid2">
+        <label class="f">প্রতিষ্ঠানের নাম<input type="text" id="shInst"></label>
+        <label class="f">শিরোনাম<input type="text" id="shTitle"></label>
+      </div>
+      <div class="row" style="margin-top:12px"><button class="primary" id="svgBtn" type="button">শিট নামান (SVG)</button><span class="sub">নামানো ফাইল ব্রাউজারে খুলে প্রিন্ট করুন। প্রিন্ট-উপযোগী PDF চ্যাটেও দেওয়া আছে।</span></div>
+      <div id="shMsg"></div>
+    </div>
+    <div class="sheetprev" id="sheetPrev"></div>
+    <div class="card"><h3>প্রিন্টের নিয়ম</h3><ul class="tips">
+      <li>প্রিন্টে "Fit to page" বা "Scale" বন্ধ রাখুন, মাপ ১০০% রাখুন।</li>
+      <li>বৃত্ত ও লেখা লাল রঙে থাকবে, আর কোণার চৌকো ও পাশের দাগ কালো। ফটোকপি করলে সব কালো হয়ে যায়, তাতেও কাজ চলে, তবে লাল ছাপা শিটে নির্ভুলতা সবচেয়ে বেশি।</li>
+      <li>শিক্ষার্থীদের কালো বা নীল বলপেন দিতে বলুন। লাল কালি বা হালকা পেন্সিল ব্যবহার করা যাবে না।</li>
+    </ul></div>
+  </section>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function (root) {
+'use strict';
+
+// ---------------------------------------------------------------- layout (mm)
+const L = (function () {
+  const W = 210, H = 297;
+  const MK = 8;
+  const markers = [[12, 12], [198, 12], [198, 285], [12, 285]]; // TL TR BR BL
+  const infoY = []; for (let i = 0; i < 10; i++) infoY.push(52 + i * 5.2);
+  const ansY = []; for (let r = 0; r < 25; r++) ansY.push(118 + r * 6.3);
+  const rollX = []; for (let c = 0; c < 6; c++) rollX.push(26 + c * 6.2);
+  const subjX = []; for (let c = 0; c < 3; c++) subjX.push(100 + c * 6.2);
+  const setX = 80;
+  const colX0 = [22, 64, 106, 148];
+  const optDX = [12, 18.6, 25.2, 31.8];
+  const rInfo = 2.1, rAns = 2.3;
+  const timingRows = infoY.concat(ansY);
+  const timingX = [12, 198];
+  const q = [];
+  for (let n = 0; n < 100; n++) {
+    const c = Math.floor(n / 25), r = n % 25;
+    q.push({ y: ansY[r], row: 10 + r, x: optDX.map(d => colX0[c] + d) });
+  }
+  return { W, H, MK, markers, infoY, ansY, rollX, subjX, setX, colX0, optDX, rInfo, rAns, timingRows, timingX, q, TM: { w: 5, h: 2 } };
+})();
+
+const SET_LABELS = ['ক', 'খ', 'গ', 'ঘ'];
+const OPT = ['A', 'B', 'C', 'D'];
+
+// ---------------------------------------------------------------- printable sheet (SVG, mm units)
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function sheetSVG(opt) {
+  opt = opt || {};
+  const RED = opt.red || '#d8322f', LIGHT = opt.light || '#fdeceb', K = '#000';
+  const font = opt.font || "'Noto Sans Bengali','Hind Siliguri',sans-serif";
+  const fill = opt.fill || null; // testing only: {roll:'123456', set:1, subj:'101', ans:[0..3|-1]}
+  const o = [];
+  const t = (x, y, s, sz, extra) => o.push(`<text x="${x}" y="${y}" font-size="${sz}" fill="${RED}" ${extra || ''}>${esc(s)}</text>`);
+  const bub = (x, y, r, label, f) => {
+    o.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${f ? K : '#fff'}" stroke="${RED}" stroke-width="0.25"/>`);
+    if (label != null && !f) o.push(`<text x="${x}" y="${y + r * 0.45}" font-size="${r * 1.15}" fill="${RED}" text-anchor="middle" opacity="0.85">${esc(label)}</text>`);
+  };
+  o.push(`<svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 210 297" font-family="${font}">`);
+  o.push(`<rect width="210" height="297" fill="#fff"/>`);
+  // markers + timing
+  L.markers.forEach(([x, y]) => o.push(`<rect x="${x - L.MK / 2}" y="${y - L.MK / 2}" width="${L.MK}" height="${L.MK}" fill="${K}"/>`));
+  L.timingRows.forEach(y => L.timingX.forEach(x => o.push(`<rect x="${x - L.TM.w / 2}" y="${y - L.TM.h / 2}" width="${L.TM.w}" height="${L.TM.h}" fill="${K}"/>`)));
+  // header
+  if (opt.inst) t(105, 19, opt.inst, 6, 'text-anchor="middle" font-weight="700"'); else { t(40, 19, 'প্রতিষ্ঠান:', 4.2); o.push(`<line x1="60" y1="19.6" x2="170" y2="19.6" stroke="${RED}" stroke-width="0.25" stroke-dasharray="0.8 0.8"/>`); }
+  t(105, 26, opt.title || 'নৈর্ব্যক্তিক উত্তরপত্র (OMR)', 4, 'text-anchor="middle"');
+  o.push(`<line x1="22" y1="30" x2="188" y2="30" stroke="${RED}" stroke-width="0.3"/>`);
+  t(24, 36, 'পরীক্ষা: ' + (opt.exam || '................................'), 3.2);
+  // roll
+  t(rollMid(), 40.6, 'রোল নম্বর', 3, 'text-anchor="middle"');
+  L.rollX.forEach(x => o.push(`<rect x="${x - 2.8}" y="43" width="5.6" height="5.4" fill="none" stroke="${RED}" stroke-width="0.25"/>`));
+  if (fill && fill.roll) L.rollX.forEach((x, c) => o.push(`<text x="${x}" y="47.2" font-size="3.6" text-anchor="middle" fill="#123">${fill.roll[c] || ''}</text>`));
+  // shading boxes
+  o.push(`<rect x="20.6" y="49.2" width="42.6" height="51.6" fill="${LIGHT}" stroke="${RED}" stroke-width="0.25"/>`);
+  o.push(`<rect x="70.5" y="49.2" width="13" height="21.6" fill="${LIGHT}" stroke="${RED}" stroke-width="0.25"/>`);
+  o.push(`<rect x="94.6" y="49.2" width="23.4" height="51.6" fill="${LIGHT}" stroke="${RED}" stroke-width="0.25"/>`);
+  L.infoY.forEach((y, d) => {
+    L.rollX.forEach((x, c) => bub(x, y, L.rInfo, d, fill && fill.roll && +fill.roll[c] === d));
+    L.subjX.forEach((x, c) => bub(x, y, L.rInfo, d, fill && fill.subj && +fill.subj[c] === d));
+  });
+  t(77, 40.6, 'সেট কোড', 3, 'text-anchor="middle"');
+  for (let s = 0; s < 4; s++) { t(74.2, L.infoY[s] + 1.2, SET_LABELS[s], 3.2, 'text-anchor="middle"'); bub(L.setX, L.infoY[s], L.rInfo, null, fill && fill.set === s); }
+  t(L.subjX[1], 40.6, 'বিষয় কোড', 3, 'text-anchor="middle"');
+  L.subjX.forEach(x => o.push(`<rect x="${x - 2.8}" y="43" width="5.6" height="5.4" fill="none" stroke="${RED}" stroke-width="0.25"/>`));
+  // write-in boxes
+  const wb = (y, h, label) => { o.push(`<rect x="126" y="${y}" width="64" height="${h}" fill="none" stroke="${RED}" stroke-width="0.25"/>`); t(128, y + 4, label, 2.8); };
+  wb(40, 14, 'শিক্ষার্থীর নাম'); wb(57, 12, 'শ্রেণি / শাখা'); wb(72, 13, 'শিক্ষার্থীর স্বাক্ষর'); wb(88, 13, 'কক্ষ পরিদর্শকের স্বাক্ষর');
+  // instructions
+  t(24, 106, '• শুধু কালো বা নীল বলপেন দিয়ে বৃত্ত সম্পূর্ণ ভরাট করুন।  • প্রতিটি প্রশ্নে একটি মাত্র বৃত্ত।  • শিট ভাঁজ করবেন না, কালো চিহ্নগুলোর উপর লিখবেন না।', 2.55);
+  // answer columns
+  L.colX0.forEach((x0, c) => {
+    o.push(`<rect x="${x0}" y="110.2" width="38" height="${L.ansY[24] + 4 - 110.2}" fill="none" stroke="${RED}" stroke-width="0.3"/>`);
+    t(x0 + 5, 114, 'প্রশ্ন', 2.5, 'text-anchor="middle"');
+    for (let r = 0; r < 25; r++) {
+      const n = c * 25 + r, y = L.ansY[r];
+      if (r % 2 === 1) o.push(`<rect x="${x0 + 0.3}" y="${y - 3.15}" width="37.4" height="6.3" fill="${LIGHT}"/>`);
+      if (r % 5 === 0 && r) o.push(`<line x1="${x0}" y1="${y - 3.15}" x2="${x0 + 38}" y2="${y - 3.15}" stroke="${RED}" stroke-width="0.25"/>`);
+      t(x0 + 7.5, y + 1.15, String(n + 1).padStart(2, '0'), 3, 'text-anchor="end"');
+      L.optDX.forEach((d, k) => bub(x0 + d, y, L.rAns, OPT[k], fill && fill.ans && fill.ans[n] === k));
+    }
+  });
+  t(105, 278, 'কালো চৌকো ও পাশের দাগগুলো স্ক্যানের জন্য — এগুলোর উপর কিছু লিখবেন না বা কাটবেন না', 2.6, 'text-anchor="middle"');
+  o.push('</svg>');
+  return o.join('');
+  function rollMid() { return (L.rollX[0] + L.rollX[5]) / 2; }
+}
+
+// ---------------------------------------------------------------- math
+function solve(A, b) {
+  const n = b.length; A = A.map((r, i) => r.concat([b[i]]));
+  for (let c = 0; c < n; c++) {
+    let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+    [A[c], A[p]] = [A[p], A[c]];
+    if (Math.abs(A[c][c]) < 1e-12) return null;
+    for (let r = 0; r < n; r++) if (r !== c) { const f = A[r][c] / A[c][c]; for (let k = c; k <= n; k++) A[r][k] -= f * A[c][k]; }
+  }
+  return A.map((r, i) => r[n] / r[i]);
+}
+function homography(src, dst) { // maps src -> dst, 4 points
+  const A = [], b = [];
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = src[i], [u, v] = dst[i];
+    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u);
+    A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v);
+  }
+  const h = solve(A, b); if (!h) return null; h.push(1); return h;
+}
+function apply(h, x, y) { const w = h[6] * x + h[7] * y + h[8]; return [(h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w]; }
+
+// ---------------------------------------------------------------- image helpers
+// img: {w,h,data:Uint8ClampedArray RGBA}. We use the RED channel: red print vanishes, black/blue ink stays dark.
+function channel(img) {
+  const n = img.w * img.h, g = new Uint8Array(n), d = img.data;
+  for (let i = 0, j = 0; i < n; i++, j += 4) g[i] = d[j];
+  return { w: img.w, h: img.h, g, img };
+}
+function greenOf(ch) { // green channel: printed red outlines are dark here (used only for alignment)
+  if (ch.G) return ch.G;
+  const n = ch.w * ch.h, g = new Uint8Array(n), d = ch.img.data;
+  for (let i = 0, j = 1; i < n; i++, j += 4) g[i] = d[j];
+  ch.G = { w: ch.w, h: ch.h, g }; return ch.G;
+}
+function downscale(ch, maxSide) {
+  const s = Math.max(1, Math.ceil(Math.max(ch.w, ch.h) / maxSide));
+  if (s === 1) return { w: ch.w, h: ch.h, g: ch.g, s: 1 };
+  const w = Math.floor(ch.w / s), h = Math.floor(ch.h / s), g = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let sum = 0; for (let yy = 0; yy < s; yy++) { const o = (y * s + yy) * ch.w + x * s; for (let xx = 0; xx < s; xx++) sum += ch.g[o + xx]; }
+    g[y * w + x] = sum / (s * s);
+  }
+  return { w, h, g, s };
+}
+function bil(ch, x, y) {
+  if (x < 0 || y < 0 || x >= ch.w - 1 || y >= ch.h - 1) return 255;
+  const x0 = x | 0, y0 = y | 0, fx = x - x0, fy = y - y0, i = y0 * ch.w + x0, g = ch.g;
+  return (g[i] * (1 - fx) + g[i + 1] * fx) * (1 - fy) + (g[i + ch.w] * (1 - fx) + g[i + ch.w + 1] * fx) * fy;
+}
+
+// ---------------------------------------------------------------- marker detection
+function darkMask(sm) {
+  const { w, h, g } = sm, I = new Float64Array((w + 1) * (h + 1));
+  for (let y = 0; y < h; y++) { let row = 0; for (let x = 0; x < w; x++) { row += g[y * w + x]; I[(y + 1) * (w + 1) + x + 1] = I[y * (w + 1) + x + 1] + row; } }
+  const R = Math.max(8, Math.round(Math.max(w, h) / 14)), m = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const y0 = Math.max(0, y - R), y1 = Math.min(h, y + R + 1);
+    for (let x = 0; x < w; x++) {
+      const x0 = Math.max(0, x - R), x1 = Math.min(w, x + R + 1);
+      const s = I[y1 * (w + 1) + x1] - I[y0 * (w + 1) + x1] - I[y1 * (w + 1) + x0] + I[y0 * (w + 1) + x0];
+      const mean = s / ((x1 - x0) * (y1 - y0));
+      const v = g[y * w + x];
+      m[y * w + x] = (v < mean * 0.62 && v < 150) ? 1 : 0;
+    }
+  }
+  return m;
+}
+function components(m, w, h) {
+  const lab = new Int32Array(w * h), out = [], st = new Int32Array(w * h);
+  let id = 0;
+  for (let i = 0; i < w * h; i++) {
+    if (!m[i] || lab[i]) continue;
+    id++; let top = 0; st[top++] = i; lab[i] = id;
+    let a = 0, sx = 0, sy = 0, x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+    const ex = [[0, 0, -1e9], [0, 0, -1e9], [0, 0, -1e9], [0, 0, -1e9], [0, 0, -1e9], [0, 0, -1e9], [0, 0, -1e9], [0, 0, -1e9]];
+    while (top) {
+      const p = st[--top], x = p % w, y = (p / w) | 0;
+      a++; sx += x; sy += y; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      const pr = [x, x + y, y, y - x, -x, -x - y, -y, x - y];
+      for (let k = 0; k < 8; k++) if (pr[k] > ex[k][2]) ex[k] = [x, y, pr[k]];
+      if (x > 0 && m[p - 1] && !lab[p - 1]) { lab[p - 1] = id; st[top++] = p - 1; }
+      if (x < w - 1 && m[p + 1] && !lab[p + 1]) { lab[p + 1] = id; st[top++] = p + 1; }
+      if (y > 0 && m[p - w] && !lab[p - w]) { lab[p - w] = id; st[top++] = p - w; }
+      if (y < h - 1 && m[p + w] && !lab[p + w]) { lab[p + w] = id; st[top++] = p + w; }
+    }
+    if (a < 12) continue;
+    const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+    // octagon from 8 extreme points, each pixel expanded by half a pixel outward
+    const dirs = [[1, 0], [.7071, .7071], [0, 1], [-.7071, .7071], [-1, 0], [-.7071, -.7071], [0, -1], [.7071, -.7071]];
+    const q = ex.map((e, k) => [e[0] + dirs[k][0] * 0.5, e[1] + dirs[k][1] * 0.5]);
+    let qa = 0; for (let k = 0; k < 8; k++) { const [ax, ay] = q[k], [bx, by] = q[(k + 1) % 8]; qa += ax * by - bx * ay; } qa = Math.abs(qa) / 2;
+    out.push({ a, cx: sx / a, cy: sy / a, bw, bh, fill: a / (bw * bh), qfill: qa > 0 ? a / qa : 0 });
+  }
+  return out;
+}
+function orderCW(pts) {
+  const cx = pts.reduce((s, p) => s + p.cx, 0) / 4, cy = pts.reduce((s, p) => s + p.cy, 0) / 4;
+  return pts.slice().sort((a, b) => Math.atan2(a.cy - cy, a.cx - cx) - Math.atan2(b.cy - cy, b.cx - cx));
+}
+function quadArea(p) { let s = 0; for (let k = 0; k < 4; k++) { const a = p[k], b = p[(k + 1) % 4]; s += a.cx * b.cy - b.cx * a.cy; } return s / 2; }
+function isConvex(p) {
+  let sign = 0;
+  for (let k = 0; k < 4; k++) {
+    const a = p[k], b = p[(k + 1) % 4], c = p[(k + 2) % 4];
+    const z = (b.cx - a.cx) * (c.cy - b.cy) - (b.cy - a.cy) * (c.cx - b.cx);
+    if (z === 0) return false; const s = z > 0 ? 1 : -1; if (!sign) sign = s; else if (s !== sign) return false;
+  }
+  return true;
+}
+
+function findMarkerQuads(sm) {
+  const m = darkMask(sm), comps = components(m, sm.w, sm.h);
+  const minSide = Math.min(sm.w, sm.h);
+  let cand = comps.filter(c => {
+    const ar = c.bw / c.bh;
+    return ar > 0.4 && ar < 2.5 && c.fill > 0.45 && c.qfill > 0.8 &&
+      c.bw > minSide * 0.012 && c.bw < minSide * 0.14 && c.bh < minSide * 0.14;
+  });
+  cand.sort((a, b) => b.a - a.a); cand = cand.slice(0, 14);
+  const quads = [];
+  const n = cand.length;
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) for (let k = j + 1; k < n; k++) for (let l = k + 1; l < n; l++) {
+    const p = [cand[i], cand[j], cand[k], cand[l]];
+    const as = p.map(c => c.a), mx = Math.max(...as), mn = Math.min(...as);
+    if (mx / mn > 4) continue;
+    const o = orderCW(p); if (!isConvex(o)) continue;
+    const ar = Math.abs(quadArea(o)); if (ar < sm.w * sm.h * 0.08) continue;
+    // marker size should be consistent with quad size (8mm vs ~186x273mm)
+    const meanSide = Math.sqrt(ar / (186 * 273)), expA = (8 * meanSide) ** 2;
+    const sizeOK = as.every(a => a > expA * 0.25 && a < expA * 3.5);
+    if (!sizeOK) continue;
+    quads.push({ pts: o, area: ar });
+  }
+  quads.sort((a, b) => b.area - a.area);
+  return quads.slice(0, 6);
+}
+
+// refine a marker centre at full resolution
+function refineMarker(ch, x, y, rad) {
+  const x0 = Math.max(0, Math.round(x - rad)), x1 = Math.min(ch.w - 1, Math.round(x + rad));
+  const y0 = Math.max(0, Math.round(y - rad)), y1 = Math.min(ch.h - 1, Math.round(y + rad));
+  let lo = 255, hi = 0;
+  for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) { const v = ch.g[yy * ch.w + xx]; if (v < lo) lo = v; if (v > hi) hi = v; }
+  if (hi - lo < 40) return [x, y];
+  const thr = (lo + hi) / 2;
+  // flood from darkest-near-centre seed would be best; centroid of dark pixels in window is good enough (quiet zone around marker)
+  let sx = 0, sy = 0, n = 0;
+  for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) if (ch.g[yy * ch.w + xx] < thr) { sx += xx; sy += yy; n++; }
+  return n ? [sx / n, sy / n] : [x, y];
+}
+
+// ---------------------------------------------------------------- reading
+function sampleDisk(ch, H, cx, cy, r) {
+  let s = 0, n = 0;
+  const steps = 6;
+  for (let i = -steps; i <= steps; i++) for (let j = -steps; j <= steps; j++) {
+    const u = i / steps, v = j / steps; if (u * u + v * v > 1) continue;
+    const p = apply(H, cx + u * r, cy + v * r); s += bil(ch, p[0], p[1]); n++;
+  }
+  return s / n;
+}
+function sampleRingWhite(ch, H, cx, cy, r1, r2) {
+  const vals = [];
+  for (let a = 0; a < 32; a++) {
+    const t = a / 32 * Math.PI * 2;
+    for (const rr of [r1, (r1 + r2) / 2, r2]) { const p = apply(H, cx + Math.cos(t) * rr, cy + Math.sin(t) * rr); vals.push(bil(ch, p[0], p[1])); }
+  }
+  vals.sort((a, b) => a - b);
+  return vals[Math.floor(vals.length * 0.95)];
+}
+function bubbleScore(ch, H, x, y, r, ringOut) {
+  const inner = sampleDisk(ch, H, x, y, r * 0.62);
+  const white = Math.max(60, sampleRingWhite(ch, H, x, y, r * 1.25, ringOut));
+  return Math.max(0, Math.min(1, 1 - inner / white));
+}
+
+// ---- local alignment on the printed outlines (green channel)
+const RING_ANG = []; for (let a = 0; a < 16; a++) RING_ANG.push([Math.cos(a / 16 * 2 * Math.PI), Math.sin(a / 16 * 2 * Math.PI)]);
+function ringContrast(G, H, pts, r, dx, dy) {
+  let s = 0;
+  for (const [x, y] of pts) {
+    for (const [c, sn] of RING_ANG) {
+      let on = 0;
+      for (const rr of [r - 0.18, r, r + 0.18]) { const p = apply(H, x + dx + c * rr, y + dy + sn * rr); on += bil(G, p[0], p[1]); }
+      const po = apply(H, x + dx + c * (r + 0.95), y + dy + sn * (r + 0.95));
+      s += bil(G, po[0], po[1]) - on / 3;
+    }
+  }
+  return s / (pts.length * RING_ANG.length);
+}
+function alignGroup(G, H, pts, r, range) {
+  let best = { c: -1e9, dx: 0, dy: 0 };
+  const step = 0.4;
+  for (let dy = -range; dy <= range + 1e-9; dy += step) for (let dx = -range; dx <= range + 1e-9; dx += step) {
+    const c = ringContrast(G, H, pts, r, dx, dy); if (c > best.c) best = { c, dx, dy };
+  }
+  const b0 = best;
+  for (let dy = b0.dy - 0.3; dy <= b0.dy + 0.3 + 1e-9; dy += 0.1) for (let dx = b0.dx - 0.3; dx <= b0.dx + 0.3 + 1e-9; dx += 0.1) {
+    const c = ringContrast(G, H, pts, r, dx, dy); if (c > best.c) best = { c, dx, dy };
+  }
+  const base = ringContrast(G, H, pts, r, 0, 0);
+  return best.c > 6 ? best : { c: best.c, dx: 0, dy: 0, weak: true, base };
+}
+function smoothOffsets(arr) { // median of 5 neighbours, ignore weak
+  return arr.map((o, i) => {
+    const xs = [], ys = [];
+    for (let k = i - 2; k <= i + 2; k++) if (arr[k] && !arr[k].weak) { xs.push(arr[k].dx); ys.push(arr[k].dy); }
+    if (!xs.length) return { dx: 0, dy: 0 };
+    xs.sort((a, b) => a - b); ys.sort((a, b) => a - b);
+    const mx = xs[xs.length >> 1], my = ys[ys.length >> 1];
+    // keep own estimate if it agrees with neighbours (preserves real local bends)
+    if (!o.weak && Math.abs(o.dx - mx) < 0.5 && Math.abs(o.dy - my) < 0.5) return { dx: o.dx, dy: o.dy };
+    return { dx: mx, dy: my };
+  });
+}
+
+// timing-mark based vertical correction; returns {dyL[], dyR[], score}
+function timingCorrection(ch, H) {
+  const res = { L: [], R: [], hits: 0 };
+  L.timingX.forEach((tx, side) => {
+    const arr = side ? res.R : res.L;
+    L.timingRows.forEach(ty => {
+      const prof = [];
+      const N = 61, span = 3.2; // +/- mm
+      for (let k = 0; k < N; k++) {
+        const yy = ty - span + (2 * span) * k / (N - 1);
+        let s = 0; for (let xx = -1.6; xx <= 1.6; xx += 0.8) { const p = apply(H, tx + xx, yy); s += bil(ch, p[0], p[1]); }
+        prof.push(s / 5);
+      }
+      const mx = Math.max(...prof), mn = Math.min(...prof);
+      if (mx - mn < 35) { arr.push(null); return; }
+      const thr = (mx + mn) / 2;
+      // pick the dark run nearest the centre
+      let best = null;
+      for (let k = 0; k < N;) {
+        if (prof[k] < thr) { let e = k; while (e + 1 < N && prof[e + 1] < thr) e++; const c = (k + e) / 2; if (!best || Math.abs(c - 30) < Math.abs(best.c - 30)) best = { s: k, e, c }; k = e + 1; } else k++;
+      }
+      if (!best) { arr.push(null); return; }
+      let sw = 0, sc = 0;
+      for (let k = Math.max(0, best.s - 2); k <= Math.min(N - 1, best.e + 2); k++) { const wgt = Math.max(0, thr - prof[k]) + Math.max(0, (thr - prof[k]) * 0); const w2 = Math.max(0, mx - prof[k]) * (prof[k] < thr ? 1 : 0.3); sw += w2; sc += w2 * k; }
+      const kc = sw ? sc / sw : best.c;
+      const width = (best.e - best.s + 1) * (2 * span) / (N - 1);
+      const dy = -span + (2 * span) * kc / (N - 1);
+      if (width < 0.8 || width > 4.5 || Math.abs(dy) > 2.6) { arr.push(null); return; }
+      arr.push(dy); res.hits++;
+    });
+  });
+  // fill gaps by interpolation
+  [res.L, res.R].forEach(a => {
+    for (let i = 0; i < a.length; i++) if (a[i] == null) {
+      let p = i - 1; while (p >= 0 && a[p] == null) p--;
+      let n = i + 1; while (n < a.length && a[n] == null) n++;
+      if (p >= 0 && n < a.length) a[i] = a[p] + (a[n] - a[p]) * (i - p) / (n - p);
+      else if (p >= 0) a[i] = a[p]; else if (n < a.length) a[i] = a[n]; else a[i] = 0;
+    }
+  });
+  res.ratio = res.hits / (L.timingRows.length * 2);
+  return res;
+}
+function dyAt(tc, rowIdx, x) { const t = (x - L.timingX[0]) / (L.timingX[1] - L.timingX[0]); return tc.L[rowIdx] * (1 - t) + tc.R[rowIdx] * t; }
+
+const TH = { FILL: 0.40, EMPTY: 0.20, GAP: 0.22 };
+
+function median(a) { const b = a.slice().sort((x, y) => x - y); return b.length ? b[b.length >> 1] : 0; }
+// per-sheet adaptive thresholds: empty level from the many empty bubbles, filled level from clear marks
+function thresholds(ansScores, infoCols) {
+  const mk = (all, tops) => {
+    const base = median(all);
+    const mad = median(all.map(v => Math.abs(v - base)));
+    const strong = tops.filter(v => v > base + 0.3);
+    const fillLvl = strong.length >= 3 ? median(strong) : 0.75;
+    let FILL = base + 0.5 * (fillLvl - base);
+    FILL = Math.min(0.5, Math.max(0.28, FILL));
+    let EMPTY = base + Math.max(0.09, 5 * mad);
+    EMPTY = Math.min(EMPTY, FILL - 0.1);
+    return { FILL, EMPTY, GAP: Math.max(0.18, (FILL - base) * 0.6), base, fillLvl };
+  };
+  const a = ansScores.flat(), at = ansScores.map(s => Math.max(...s));
+  const i = infoCols.flat(), it = infoCols.map(s => Math.max(...s));
+  return { ans: mk(a, at), info: mk(i.concat(a), it.concat(at)) };
+}
+
+function decide(scores, th) {
+  th = th || TH;
+  const idx = [0, 1, 2, 3].slice(0, scores.length).sort((a, b) => scores[b] - scores[a]);
+  const filled = idx.filter(i => scores[i] >= th.FILL);
+  const doubt = idx.filter(i => scores[i] > th.EMPTY && scores[i] < th.FILL);
+  if (filled.length === 1) {
+    if (!doubt.length) return { v: filled[0], st: 'ok' };
+    if (scores[filled[0]] - scores[doubt[0]] >= th.GAP) return { v: filled[0], st: 'ok' };
+    return { v: filled[0], st: 'doubt' };
+  }
+  if (filled.length > 1) {
+    if (scores[filled[0]] - scores[filled[1]] >= th.GAP * 1.4) return { v: filled[0], st: 'doubt' };
+    return { v: -2, st: 'multi', all: filled };
+  }
+  if (doubt.length) return { v: doubt[0], st: 'doubt', weak: true };
+  return { v: -1, st: 'ok' };
+}
+function decide4(s, th) {
+  th = th || TH;
+  const idx = s.map((_, i) => i).sort((a, b) => s[b] - s[a]);
+  const filled = idx.filter(i => s[i] >= th.FILL), doubt = idx.filter(i => s[i] > th.EMPTY && s[i] < th.FILL);
+  if (filled.length === 1 && (!doubt.length || s[filled[0]] - s[doubt[0]] >= th.GAP)) return { v: filled[0], st: 'ok' };
+  if (filled.length === 1) return { v: filled[0], st: 'doubt' };
+  if (filled.length > 1) return { v: -2, st: 'multi' };
+  if (doubt.length) return { v: doubt[0], st: 'doubt' };
+  return { v: -1, st: 'blank' };
+}
+
+function readWithH(ch, H) {
+  const tc = timingCorrection(ch, H);
+  const G = greenOf(ch);
+  // answers: per column, per row alignment
+  const off = [];
+  for (let c = 0; c < 4; c++) {
+    const rows = [];
+    for (let r = 0; r < 25; r++) {
+      const q = L.q[c * 25 + r];
+      const pts = q.x.map(x => [x, q.y + dyAt(tc, q.row, x)]);
+      rows.push(alignGroup(G, H, pts, L.rAns, 2.2));
+    }
+    smoothOffsets(rows).forEach((o, r) => off[c * 25 + r] = o);
+  }
+  const ans = [], scores = [], pos = [];
+  L.q.forEach((q, n) => {
+    const o = off[n];
+    const p = q.x.map(x => [x + o.dx, q.y + dyAt(tc, q.row, x) + o.dy]);
+    const sc = p.map(([x, y]) => bubbleScore(ch, H, x, y, L.rAns, 3.6));
+    pos.push(p); scores.push(sc);
+  });
+  // info block: per row alignment for roll and subject groups
+  const infoOff = (xs) => smoothOffsets(L.infoY.map((y, i) => alignGroup(G, H, xs.map(x => [x, y + dyAt(tc, i, x)]), L.rInfo, 2.0)));
+  const rOff = infoOff(L.rollX), sOff = infoOff(L.subjX);
+  const infoPos = (xs, offs) => xs.map(x => L.infoY.map((y, i) => [x + offs[i].dx, y + dyAt(tc, i, x) + offs[i].dy]));
+  const rollPos = infoPos(L.rollX, rOff), subjPos = infoPos(L.subjX, sOff);
+  const setPos = [0, 1, 2, 3].map(i => [L.setX + (rOff[i].dx + sOff[i].dx) / 2, L.infoY[i] + dyAt(tc, i, L.setX) + (rOff[i].dy + sOff[i].dy) / 2]);
+  const rollSc = rollPos.map(col => col.map(([x, y]) => bubbleScore(ch, H, x, y, L.rInfo, 2.7)));
+  const subjSc = subjPos.map(col => col.map(([x, y]) => bubbleScore(ch, H, x, y, L.rInfo, 2.7)));
+  const setSc = setPos.map(([x, y]) => bubbleScore(ch, H, x, y, L.rInfo, 2.7));
+  const th = thresholds(scores, rollSc.concat(subjSc));
+  const ans2 = scores.map((sc, n) => {
+    const d = decide(sc, th.ans);
+    if (Math.abs(off[n].dx) > 1.9 || Math.abs(off[n].dy) > 1.9) { d.st = d.v === -1 && Math.max(...sc) < th.ans.EMPTY ? d.st : 'doubt'; d.align = true; }
+    return d;
+  });
+  const badAlign = off.filter(o => Math.abs(o.dx) > 1.9 || Math.abs(o.dy) > 1.9).length;
+  const infoBad = rOff.concat(sOff).some(o => Math.abs(o.dx) > 1.8 || Math.abs(o.dy) > 1.8);
+  const roll = rollSc.map(sc => { const d = decide4(sc, th.info); if (infoBad && d.st === 'ok') d.st = 'doubt'; return d; });
+  const subj = subjSc.map(sc => decide4(sc, th.info));
+  const set = decide4(setSc, th.info); if (infoBad && set.st === 'ok') set.st = 'doubt';
+  subj.forEach(d => { if (infoBad && d.st === 'ok') d.st = 'doubt'; });
+  return { rOff, sOff, off, badAlign, tc, ans: ans2, scores, pos, roll, rollSc, rollPos, subj, subjSc, subjPos, set, setSc, setPos, th };
+}
+
+// verify orientation: timing marks dark, space between them light
+function verify(ch, H) {
+  let good = 0, tot = 0;
+  L.timingX.forEach(tx => L.timingRows.forEach((ty, i) => {
+    const pm = apply(H, tx, ty), d = bil(ch, pm[0], pm[1]);
+    const pa = apply(H, tx + 4.5, ty), a = bil(ch, pa[0], pa[1]); // paper right/left of mark
+    const pb = apply(H, tx - 4.5, ty), b = bil(ch, pb[0], pb[1]);
+    tot++; if (d < Math.max(a, b) * 0.7) good++;
+  }));
+  // paper where no marks exist on the 180° image (e.g. between info and answers)
+  return good / tot;
+}
+
+function locate(img) {
+  const ch = channel(img);
+  const sm = downscale(ch, 900);
+  const quads = findMarkerQuads(sm);
+  let best = null;
+  const dst = L.markers;
+  for (const q of quads) {
+    const pts = q.pts.map(p => [p.cx * sm.s + sm.s / 2 - 0.5, p.cy * sm.s + sm.s / 2 - 0.5]);
+    for (let start = 0; start < 4; start++) {
+      const o = [0, 1, 2, 3].map(k => pts[(start + k) % 4]);
+      const top = Math.hypot(o[1][0] - o[0][0], o[1][1] - o[0][1]), left = Math.hypot(o[3][0] - o[0][0], o[3][1] - o[0][1]);
+      if (top > left * 1.05) continue; // portrait: top edge shorter
+      let H = homography(dst, o); if (!H) continue;
+      const c0 = apply(H, 12, 12), c1 = apply(H, 20, 12);
+      const mkPx = Math.hypot(c1[0] - c0[0], c1[1] - c0[1]);
+      const refined = o.map((p, k) => refineMarker(ch, p[0], p[1], mkPx * 0.9));
+      H = homography(dst, refined) || H;
+      const v = verify(ch, H);
+      if (!best || v > best.v) best = { H, v, pts: refined };
+    }
+    if (best && best.v > 0.9) break;
+  }
+  return { ch, best };
+}
+
+function read(img, opts) {
+  opts = opts || {};
+  const t0 = Date.now();
+  const { ch, best } = locate(img);
+  if (!best || best.v < 0.6) return { ok: false, error: 'markers', msg: 'শিটের চার কোণার কালো চৌকো খুঁজে পাওয়া যায়নি' , v: best ? best.v : 0 };
+  const r = readWithH(ch, best.H);
+  r.ok = true; r.H = best.H; r.corners = best.pts; r.verify = best.v; r.ms = Date.now() - t0;
+  r.quality = qualityCheck(ch, best.H, r);
+  // a sheet whose printed grid cannot be matched reliably is rejected instead of guessed
+  r.unreliable = r.badAlign > 5 || r.tc.ratio < 0.6;
+  if (r.unreliable) r.ans.forEach(a => { if (a.st === 'ok' && a.v !== -1) a.st = 'doubt'; });
+  return r;
+}
+
+// sharpness / exposure heuristics on the timing marks
+function qualityCheck(ch, H, r) {
+  const issues = [];
+  if (r.badAlign > 5) issues.push('শিট বাঁকা বা কোঁচকানো — সমান জায়গায় রেখে আবার ছবি তুলুন');
+  if (r.tc.ratio < 0.85) issues.push('কিছু টাইমিং দাগ পড়া যায়নি — শিট ভাঁজ বা ছায়া থাকতে পারে');
+  // pixel per mm
+  const a = apply(H, 12, 12), b = apply(H, 198, 12);
+  const ppm = Math.hypot(b[0] - a[0], b[1] - a[1]) / 186;
+  if (ppm < 2.6) issues.push('ছবিতে শিট খুব ছোট — ক্যামেরা কাছে আনুন');
+  // edge sharpness on a marker edge
+  const prof = []; for (let k = -12; k <= 12; k++) { const p = apply(H, 12 + 4 + k * 0.15, 12); prof.push(bil(ch, p[0], p[1])); }
+  let maxStep = 0; for (let k = 1; k < prof.length; k++) maxStep = Math.max(maxStep, Math.abs(prof[k] - prof[k - 1]));
+  const range = Math.max(...prof) - Math.min(...prof);
+  const sharp = range ? maxStep / range * (0.15 * ppm) : 0;
+  if (range < 60) issues.push('আলো কম বা ঝলসে গেছে');
+  if (sharp < 0.12) issues.push('ছবি ঝাপসা মনে হচ্ছে');
+  return { ppm, sharp, issues };
+}
+
+// quick marker-only check for live camera preview (small frame)
+function quickLocate(img) {
+  const ch = channel(img); const sm = downscale(ch, 480);
+  const quads = findMarkerQuads(sm);
+  for (const q of quads) {
+    const pts = q.pts.map(p => [p.cx * sm.s, p.cy * sm.s]);
+    for (let start = 0; start < 4; start++) {
+      const o = [0, 1, 2, 3].map(k => pts[(start + k) % 4]);
+      const top = Math.hypot(o[1][0] - o[0][0], o[1][1] - o[0][1]), left = Math.hypot(o[3][0] - o[0][0], o[3][1] - o[0][1]);
+      if (top > left * 1.05) continue;
+      const H = homography(L.markers, o); if (!H) continue;
+      const v = verify(ch, H);
+      if (v > 0.8) return { pts: o, v };
+    }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------- grading
+function digitsStr(arr) { return arr.map(d => d.v >= 0 ? String(d.v) : (d.v === -2 ? '*' : '?')).join(''); }
+
+function grade(reading, exam) {
+  const N = exam.n;
+  const setIdx = reading.set.v;
+  let key = null;
+  if (exam.keys) key = exam.keys[setIdx >= 0 ? setIdx : 0] || exam.keys[0];
+  const res = { correct: 0, wrong: 0, blank: 0, multi: 0, doubt: [], per: [] };
+  for (let i = 0; i < N; i++) {
+    const a = reading.ans[i];
+    if (a.st === 'doubt') res.doubt.push(i);
+    const k = key ? key[i] : -1;
+    let s;
+    if (a.v === -1) { res.blank++; s = 'blank'; }
+    else if (a.v === -2) { res.multi++; s = 'multi'; }
+    else if (k == null || k < 0) s = 'nokey';
+    else if (a.v === k) { res.correct++; s = 'correct'; }
+    else { res.wrong++; s = 'wrong'; }
+    res.per.push(s);
+  }
+  const mpc = +exam.mark || 1, neg = +exam.neg || 0;
+  const wrongCount = res.wrong + (exam.multiWrong ? res.multi : 0);
+  res.score = Math.round((res.correct * mpc - wrongCount * neg) * 100) / 100;
+  res.total = N * mpc;
+  // doubtful info fields
+  res.infoDoubt = [];
+  reading.roll.forEach((d, i) => { if (d.st !== 'ok') res.infoDoubt.push('roll' + i); });
+  if (reading.set.st !== 'ok') res.infoDoubt.push('set');
+  return res;
+}
+
+const API = { L, SET_LABELS, OPT, TH, sheetSVG, read, readWithH, quickLocate, grade, decide, digitsStr, homography, apply, channel, bil };
+if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.OMR = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+(function(){
+'use strict';
+const O = window.OMR, SL = O.SET_LABELS, OPT = O.OPT;
+const $ = s => document.querySelector(s);
+const el = (t, a, ...kids) => { const e = document.createElement(t); if (a) for (const k in a) { if (a[k] == null) continue; if (k === 'class') e.className = a[k]; else if (k === 'text') e.textContent = a[k]; else if (k.startsWith('on')) e.addEventListener(k.slice(2), a[k]); else e.setAttribute(k, a[k]); } kids.flat().forEach(c => c != null && e.append(c)); return e; };
+const toast = (m) => { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 2600); };
+const letter = v => v >= 0 ? OPT[v] : (v === -2 ? '*' : '–');
+
+// ------------------------------------------------ storage
+const KEY = 'omr.bd.v1';
+let S;
+function blankExam(name, n) { return { id: 'e' + Date.now().toString(36), name, n, mark: 1, neg: 0, sets: false, multiWrong: true, keys: [[], [], [], []], results: [] }; }
+function load() {
+  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+  if (!S || !S.exams || !S.exams.length) {
+    const ex = blankExam('নমুনা পরীক্ষা (উদাহরণ)', 30);
+    ex.keys[0] = 'DDAABACCDBDBBADBDBBDDDAAABBCDB'.split('').map(c => OPT.indexOf(c));
+    S = { exams: [ex], cur: ex.id, inst: '', title: 'নৈর্ব্যক্তিক উত্তরপত্র (OMR)' };
+  }
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('ব্রাউজারে সংরক্ষণ করা যাচ্ছে না — নিয়মিত ব্যাকআপ নিন'); } }
+const ex = () => S.exams.find(e => e.id === S.cur) || S.exams[0];
+const keyFor = (e, set) => e.sets && set >= 0 ? e.keys[set] : e.keys[0];
+
+// ------------------------------------------------ grading
+function gradeAns(ans, set, e) {
+  const key = keyFor(e, set) || [];
+  const g = { correct: 0, wrong: 0, blank: 0, multi: 0, per: [] };
+  for (let i = 0; i < e.n; i++) {
+    const a = ans[i], k = key[i];
+    let s;
+    if (a === -1 || a == null) { g.blank++; s = 'blank'; }
+    else if (a === -2) { g.multi++; s = 'multi'; }
+    else if (k == null || k < 0) s = 'nokey';
+    else if (a === k) { g.correct++; s = 'correct'; } else { g.wrong++; s = 'wrong'; }
+    g.per.push(s);
+  }
+  const wc = g.wrong + (e.multiWrong ? g.multi : 0);
+  g.score = Math.round((g.correct * (+e.mark || 1) - wc * (+e.neg || 0)) * 100) / 100;
+  g.total = e.n * (+e.mark || 1);
+  return g;
+}
+function keyComplete(e, set) { const k = keyFor(e, set) || []; let c = 0; for (let i = 0; i < e.n; i++) if (k[i] >= 0) c++; return c; }
+
+// ------------------------------------------------ views / routing
+const views = ['scan', 'exam', 'results', 'sheet'];
+function route() {
+  const v = views.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'scan';
+  views.forEach(x => { $('#v-' + x).hidden = x !== v; });
+  document.querySelectorAll('nav.tabs a').forEach(a => a.setAttribute('aria-current', a.dataset.v === v ? 'page' : 'false'));
+  if (v === 'exam') renderExam(); if (v === 'results') renderResults(); if (v === 'sheet') renderSheet(); if (v === 'scan') renderScanHead();
+  if (v !== 'scan') stopCam();
+}
+window.addEventListener('hashchange', route);
+function renderExamSel() {
+  const s = $('#examSel'); s.innerHTML = '';
+  S.exams.forEach(e => s.append(el('option', { value: e.id, text: e.name })));
+  s.value = ex().id;
+}
+$('#examSel').addEventListener('change', e => { S.cur = e.target.value; save(); route(); });
+
+// ------------------------------------------------ exam editor
+let curSet = 0;
+function renderExam() {
+  const e = ex();
+  $('#exName').value = e.name; $('#exN').value = e.n; $('#exMark').value = e.mark; $('#exNeg').value = e.neg;
+  $('#exSets').checked = e.sets; $('#exMulti').checked = e.multiWrong;
+  if (!e.sets) curSet = 0;
+  const tabs = $('#setTabs'); tabs.innerHTML = '';
+  (e.sets ? [0, 1, 2, 3] : [0]).forEach(s => tabs.append(el('button', { type: 'button', 'aria-pressed': String(s === curSet), text: e.sets ? 'সেট ' + SL[s] : 'সব সেট', onclick: () => { curSet = s; renderExam(); } })));
+  renderKey();
+}
+function renderKey(flags) {
+  const e = ex(), k = e.keys[curSet], g = $('#keyGrid'); g.innerHTML = '';
+  for (let i = 0; i < e.n; i++) {
+    const row = el('div', { class: 'krow' + (flags && flags.includes(i) ? ' flag' : '') }, el('span', { class: 'qn', text: String(i + 1) }));
+    OPT.forEach((o, j) => row.append(el('button', { type: 'button', class: 'ob', 'aria-pressed': String(k[i] === j), 'aria-label': `প্রশ্ন ${i + 1} উত্তর ${o}`, text: o, onclick: () => { k[i] = k[i] === j ? -1 : j; save(); renderKey(flags); } })));
+    g.append(row);
+  }
+  const c = keyComplete(e, curSet);
+  $('#keyProg').style.width = (c / e.n * 100) + '%';
+  $('#keyCount').textContent = `${e.n}টির মধ্যে ${c}টি প্রশ্নের উত্তর দেওয়া হয়েছে` + (c < e.n ? ' — বাকিগুলো দিন' : ' ✓');
+  $('#keyText').value = Array.from({ length: e.n }, (_, i) => k[i] >= 0 ? OPT[k[i]] : '-').join('');
+}
+function bindExam() {
+  const num = (id, f) => $(id).addEventListener('change', ev => { f(ev.target.value); save(); renderExamSel(); renderExam(); });
+  num('#exName', v => ex().name = v.trim() || 'নামহীন পরীক্ষা');
+  num('#exN', v => ex().n = Math.max(1, Math.min(100, parseInt(v) || 1)));
+  num('#exMark', v => ex().mark = Math.max(0, +v || 0));
+  num('#exNeg', v => ex().neg = Math.max(0, +v || 0));
+  $('#exSets').addEventListener('change', ev => { ex().sets = ev.target.checked; save(); renderExam(); });
+  $('#exMulti').addEventListener('change', ev => { ex().multiWrong = ev.target.checked; save(); });
+  $('#keyText').addEventListener('change', ev => {
+    const t = ev.target.value.toUpperCase().replace(/[^ABCD\-]/g, ''); const k = ex().keys[curSet];
+    for (let i = 0; i < ex().n; i++) k[i] = i < t.length ? OPT.indexOf(t[i]) : -1;
+    save(); renderKey();
+  });
+  $('#keyClear').addEventListener('click', () => { ex().keys[curSet] = []; save(); renderKey(); });
+  $('#newExam').addEventListener('click', () => { const e = blankExam('নতুন পরীক্ষা', 100); S.exams.push(e); S.cur = e.id; curSet = 0; save(); renderExamSel(); renderExam(); $('#exName').focus(); $('#exName').select(); });
+  $('#delExam').addEventListener('click', () => {
+    const d = $('#delConfirm'); d.innerHTML = '';
+    d.append(el('div', { class: 'confirm', style: 'margin-top:10px' }, el('span', { text: `"${ex().name}" ও এর ${ex().results.length}টি ফলাফল মুছে যাবে।` }),
+      el('button', { type: 'button', class: 'danger', text: 'হ্যাঁ, মুছুন', onclick: () => { S.exams = S.exams.filter(x => x.id !== S.cur); if (!S.exams.length) S.exams.push(blankExam('নতুন পরীক্ষা', 100)); S.cur = S.exams[0].id; save(); d.innerHTML = ''; renderExamSel(); renderExam(); } }),
+      el('button', { type: 'button', text: 'না', onclick: () => d.innerHTML = '' })));
+  });
+  $('#keyFile').addEventListener('change', async ev => {
+    const f = ev.target.files[0]; ev.target.value = ''; if (!f) return;
+    $('#keyMsg').innerHTML = ''; $('#keyMsg').append(el('p', { class: 'sub', text: 'পড়া হচ্ছে…' }));
+    const r = await readFile(f);
+    $('#keyMsg').innerHTML = '';
+    if (!r.ok) { $('#keyMsg').append(el('div', { class: 'alert bad', style: 'margin-top:10px', text: r.msg })); return; }
+    const k = ex().keys[curSet], flags = [];
+    for (let i = 0; i < ex().n; i++) { const a = r.ans[i]; k[i] = a.v >= 0 ? a.v : -1; if (a.st !== 'ok' || a.v < 0) flags.push(i); }
+    save(); renderKey(flags);
+    $('#keyMsg').append(el('div', { class: 'alert ' + (flags.length ? 'warn' : 'ok'), style: 'margin-top:10px', text: flags.length ? `উত্তরমালা বসানো হয়েছে। হলুদ নম্বরের ${flags.length}টি প্রশ্ন (${flags.map(i => i + 1).join(', ')}) ফাঁকা বা অস্পষ্ট — দেখে ঠিক করে দিন।` : 'উত্তরমালা শিট থেকে সব উত্তর বসানো হয়েছে। একবার মিলিয়ে দেখুন।' }));
+  });
+}
+
+// ------------------------------------------------ image reading
+async function fileToImageData(file) {
+  let bmp;
+  try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+  catch (e) { bmp = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); }); }
+  return sourceToImageData(bmp, bmp.width, bmp.height);
+}
+function sourceToImageData(src, w, h) {
+  const s = Math.min(1, 3400 / Math.max(w, h));
+  const c = document.createElement('canvas'); c.width = Math.round(w * s); c.height = Math.round(h * s);
+  const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(src, 0, 0, c.width, c.height);
+  const d = x.getImageData(0, 0, c.width, c.height);
+  return { w: c.width, h: c.height, data: d.data };
+}
+async function readFile(file) {
+  try { const img = await fileToImageData(file); const r = O.read(img); r.img = img; return r; }
+  catch (e) { return { ok: false, msg: 'ছবিটি খোলা যায়নি' }; }
+}
+
+// straightened colour view of the sheet
+const VS = 3; // px per mm
+function warpCanvas(img, H) {
+  const W = 210 * VS, Hh = 297 * VS, c = document.createElement('canvas'); c.width = W; c.height = Hh;
+  const x = c.getContext('2d'), out = x.createImageData(W, Hh), d = img.data, o = out.data;
+  for (let y = 0; y < Hh; y++) for (let xx = 0; xx < W; xx++) {
+    const p = O.apply(H, xx / VS, y / VS), px = p[0] | 0, py = p[1] | 0, j = (y * W + xx) * 4;
+    if (px < 0 || py < 0 || px >= img.w || py >= img.h) { o[j] = o[j + 1] = o[j + 2] = 230; o[j + 3] = 255; continue; }
+    const i = (py * img.w + px) * 4; o[j] = d[i]; o[j + 1] = d[i + 1]; o[j + 2] = d[i + 2]; o[j + 3] = 255;
+  }
+  x.putImageData(out, 0, 0); return c;
+}
+
+// ------------------------------------------------ scan flow
+let queue = [], busy = false, current = null;
+function renderScanHead() {
+  const e = ex();
+  $('#scanSub').textContent = `${e.name} · ${e.n}টি প্রশ্ন · সংরক্ষিত ${e.results.length}টি উত্তরপত্র`;
+  const kw = $('#keyWarn'); kw.innerHTML = '';
+  const sets = e.sets ? [0, 1, 2, 3] : [0];
+  const miss = sets.filter(s => keyComplete(e, s) < e.n);
+  if (miss.length) kw.append(el('div', { class: 'alert warn' }, (e.sets ? `সেট ${miss.map(s => SL[s]).join(', ')}-এর ` : '') + 'উত্তরমালা অসম্পূর্ণ। স্ক্যান করা যাবে, তবে নম্বর ঠিক আসবে না। ', el('a', { href: '#exam', text: 'উত্তরমালা দিন' })));
+}
+$('#camFile').addEventListener('change', ev => { addFiles(ev.target.files); ev.target.value = ''; });
+$('#galFile').addEventListener('change', ev => { addFiles(ev.target.files); ev.target.value = ''; });
+function addFiles(fl) { for (const f of fl) queue.push(f); pump(); }
+function showQueue() { $('#queue').textContent = busy || queue.length ? `প্রক্রিয়াধীন… বাকি ${queue.length + (busy ? 1 : 0)}টি` : ''; }
+async function pump() {
+  showQueue();
+  if (busy || current || !queue.length) return;
+  busy = true; const f = queue.shift(); showQueue();
+  await new Promise(r => setTimeout(r, 30));
+  const r = await readFile(f);
+  busy = false;
+  handleReading(r);
+}
+function handleReading(r) {
+  const e = ex();
+  if (!r.ok || r.unreliable) {
+    current = { fail: true, r };
+    renderReview(); return;
+  }
+  const rec = {
+    roll: r.roll.map(d => d.v >= 0 ? d.v : '?').join(''),
+    set: r.set.v >= 0 ? r.set.v : (e.sets ? -1 : 0),
+    subj: r.subj.map(d => d.v >= 0 ? d.v : '?').join(''),
+    ans: r.ans.map(a => a.v),
+    doubt: r.ans.map((a, i) => a.st === 'doubt' && i < e.n ? i : -1).filter(i => i >= 0),
+    infoDoubt: r.roll.some(d => d.st !== 'ok') || (e.sets && r.set.st !== 'ok'),
+    time: Date.now()
+  };
+  current = { r, rec };
+  const clean = !rec.doubt.length && !rec.infoDoubt && !r.quality.issues.length && !/\?/.test(rec.roll) && !e.results.some(x => x.roll === rec.roll);
+  if ($('#autoSave').checked && clean) { commit(); toast(`রোল ${rec.roll} সংরক্ষিত — ${gradeAns(rec.ans, rec.set, e).score} নম্বর`); return; }
+  renderReview();
+}
+function commit(replace) {
+  const e = ex(), rec = current.rec;
+  rec.doubt = [];
+  if (replace) e.results = e.results.filter(x => x.roll !== rec.roll);
+  e.results.push(rec); save();
+  current = null; $('#reviewArea').innerHTML = ''; renderScanHead(); pump();
+}
+let selQ = null;
+function renderReview() {
+  const area = $('#reviewArea'); area.innerHTML = '';
+  if (!current) return;
+  if (current.fail) {
+    const r = current.r;
+    area.append(el('div', { class: 'card' }, el('div', { class: 'alert bad' }, r.ok ? 'এই ছবি থেকে নির্ভরযোগ্যভাবে পড়া যাচ্ছে না।' : (r.msg || 'পড়া যায়নি'), ' আবার ছবি তুলুন।'),
+      el('ul', { class: 'tips', style: 'margin-top:10px' }, (r.quality ? r.quality.issues : []).concat(['চার কোণার কালো চৌকো যেন ছবিতে থাকে', 'উজ্জ্বল আলো, ছায়া ছাড়া']).map(t => el('li', { text: t }))),
+      el('div', { class: 'row', style: 'margin-top:10px' }, el('button', { type: 'button', class: 'primary', text: 'ঠিক আছে', onclick: () => { current = null; area.innerHTML = ''; pump(); } }))));
+    return;
+  }
+  const e = ex(), { r, rec } = current;
+  const g = gradeAns(rec.ans, rec.set, e);
+  const key = keyFor(e, rec.set) || [];
+  // sheet canvas with overlays
+  if (!current.base) current.base = warpCanvas(r.img, r.H);
+  const cv = document.createElement('canvas'); cv.width = current.base.width; cv.height = current.base.height;
+  const x = cv.getContext('2d'); x.drawImage(current.base, 0, 0);
+  x.lineWidth = 2.2;
+  for (let i = 0; i < 100; i++) {
+    const pos = r.pos[i];
+    if (i >= e.n) { x.fillStyle = 'rgba(240,240,240,.6)'; x.fillRect((pos[0][0] - 9) * VS, (pos[0][1] - 3.1) * VS, 31 * VS, 6.2 * VS); continue; }
+    const st = g.per[i], a = rec.ans[i], k = key[i];
+    if (a >= 0) { x.strokeStyle = st === 'correct' ? '#17a35a' : st === 'wrong' ? '#e0261c' : '#666'; ring(x, pos[a], 3.3); }
+    if (a === -2) r.ans[i] && pos.forEach((p, j) => { if (r.scores[i][j] > r.th.ans.FILL) { x.strokeStyle = '#e0261c'; ring(x, p, 3.3); } });
+    if (k >= 0 && k !== a) { x.setLineDash([4, 3]); x.strokeStyle = '#17a35a'; ring(x, pos[k], 3.3); x.setLineDash([]); }
+    if (rec.doubt.includes(i)) { x.strokeStyle = '#f0a000'; x.lineWidth = 3; x.strokeRect((pos[0][0] - 9.5) * VS, (pos[0][1] - 3.2) * VS, 31.5 * VS, 6.4 * VS); x.lineWidth = 2.2; }
+    if (selQ === i) { x.strokeStyle = '#2a5bd7'; x.lineWidth = 3; x.strokeRect((pos[0][0] - 10) * VS, (pos[0][1] - 3.4) * VS, 32.5 * VS, 6.8 * VS); x.lineWidth = 2.2; }
+  }
+  r.rollPos.forEach((col, c) => { const v = +rec.roll[c]; if (v >= 0) { x.strokeStyle = '#2a5bd7'; ring(x, col[v], 3); } });
+  cv.addEventListener('click', ev => {
+    const b = cv.getBoundingClientRect(), mx = (ev.clientX - b.left) / b.width * 210, my = (ev.clientY - b.top) / b.height * 297;
+    let best = -1, bd = 1e9; for (let i = 0; i < e.n; i++) { const p = r.pos[i]; const cx = (p[0][0] + p[3][0]) / 2 - 3, d = Math.abs(my - p[0][1]) * 3 + Math.abs(mx - cx); if (Math.abs(my - p[0][1]) < 3.2 && Math.abs(mx - cx) < 18 && d < bd) { bd = d; best = i; } }
+    if (best >= 0) { selQ = best; renderReview(); }
+  });
+  const left = el('div', { class: 'sheetbox' }, cv);
+
+  const dupe = e.results.some(z => z.roll === rec.roll);
+  const right = el('div', { class: 'card', style: 'display:grid;gap:14px' });
+  right.append(el('div', { class: 'row', style: 'justify-content:space-between' },
+    el('div', { class: 'scorebig' }, el('b', { text: String(g.score) }), el('span', { text: '/ ' + g.total })),
+    el('div', { class: 'tally' }, el('span', { class: 'pill ok', text: 'সঠিক ' + g.correct }), el('span', { class: 'pill bad', text: 'ভুল ' + g.wrong }), el('span', { class: 'pill n', text: 'ফাঁকা ' + g.blank }), g.multi ? el('span', { class: 'pill warn', text: 'একাধিক ' + g.multi }) : null)));
+  const rollIn = el('input', { type: 'text', id: 'rvRoll', inputmode: 'numeric', class: 'mono', value: rec.roll });
+  rollIn.addEventListener('change', () => { rec.roll = rollIn.value.trim(); renderReview(); });
+  const setSel = el('select', { id: 'rvSet' }, ...(e.sets ? [el('option', { value: '-1', text: 'অজানা' })] : []), ...[0, 1, 2, 3].map(s => el('option', { value: String(s), text: SL[s] })));
+  setSel.value = String(rec.set); setSel.addEventListener('change', () => { rec.set = +setSel.value; renderReview(); });
+  right.append(el('div', { class: 'grid2' }, el('label', { class: 'f' }, 'রোল নম্বর', rollIn), el('label', { class: 'f' }, 'সেট কোড', setSel), el('label', { class: 'f' }, 'বিষয় কোড', el('div', { class: 'mono', style: 'padding:8px 0', text: rec.subj }))));
+  const msgs = [];
+  if (/\?/.test(rec.roll) || rec.infoDoubt) msgs.push(['warn', 'রোল নম্বর বা সেট কোড স্পষ্ট নয় — ঘরে ঠিক করে দিন।']);
+  if (e.sets && rec.set < 0) msgs.push(['warn', 'সেট কোড ভরাট করা হয়নি — সেট বেছে দিন।']);
+  if (dupe) msgs.push(['warn', `রোল ${rec.roll} আগেই সংরক্ষিত আছে। সংরক্ষণ করলে আগেরটি বদলে যাবে।`]);
+  if (rec.doubt.length) msgs.push(['warn', `${rec.doubt.length}টি প্রশ্ন অস্পষ্ট (হলুদ): ${rec.doubt.map(i => i + 1).join(', ')}। প্রতিটিতে ট্যাপ করে উত্তর নিশ্চিত করুন।`]);
+  r.quality.issues.forEach(t => msgs.push(['info', t]));
+  if (!msgs.length) msgs.push(['ok', 'সব উত্তর পরিষ্কারভাবে পড়া গেছে।']);
+  msgs.forEach(([k, t]) => right.append(el('div', { class: 'alert ' + k, text: t })));
+  // editor for selected question
+  if (selQ != null && selQ < e.n) {
+    const i = selQ, ed = el('div', { class: 'editor' }, el('b', { class: 'mono', text: `প্রশ্ন ${i + 1}:` }));
+    [[0, 'A'], [1, 'B'], [2, 'C'], [3, 'D'], [-1, 'ফাঁকা'], [-2, 'একাধিক']].forEach(([v, t]) => ed.append(el('button', { type: 'button', class: rec.ans[i] === v ? 'primary' : '', text: t, onclick: () => { rec.ans[i] = v; rec.doubt = rec.doubt.filter(z => z !== i); selQ = rec.doubt[0] ?? null; renderReview(); } })));
+    const sc = r.scores[i]; ed.append(el('span', { class: 'sub', text: 'কালির পরিমাণ: ' + sc.map((s, j) => OPT[j] + ' ' + Math.round(s * 100) + '%').join('  ') }));
+    if (key[i] >= 0) ed.append(el('span', { class: 'sub', text: '· উত্তরমালা: ' + OPT[key[i]] }));
+    right.append(ed);
+  }
+  const chips = el('div', { class: 'chips' });
+  for (let i = 0; i < e.n; i++) chips.append(el('button', { type: 'button', class: 'chip ' + (g.per[i] === 'correct' ? 'correct' : g.per[i] === 'wrong' ? 'wrong' : '') + (rec.doubt.includes(i) ? ' doubt' : '') + (selQ === i ? ' sel' : ''), onclick: () => { selQ = i; renderReview(); } }, el('small', { text: String(i + 1) }), el('span', { text: letter(rec.ans[i]) })));
+  right.append(chips);
+  const canSave = !rec.doubt.length && rec.roll && !/\?/.test(rec.roll) && !(e.sets && rec.set < 0);
+  right.append(el('div', { class: 'row' },
+    el('button', { type: 'button', class: 'primary', disabled: canSave ? null : '', text: dupe ? 'বদলে সংরক্ষণ করুন' : 'সংরক্ষণ করুন', onclick: () => { selQ = null; current.base = null; commit(dupe); toast('সংরক্ষিত'); } }),
+    el('button', { type: 'button', text: 'বাতিল', onclick: () => { selQ = null; current = null; area.innerHTML = ''; pump(); } }),
+    canSave ? null : el('span', { class: 'sub', text: 'হলুদ প্রশ্ন ও রোল ঠিক করলে সংরক্ষণ করা যাবে' })));
+  if (selQ == null && rec.doubt.length) { selQ = rec.doubt[0]; return renderReview(); }
+  area.append(el('div', { class: 'review' }, left, right));
+  if (!current.scrolled) { current.scrolled = true; area.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  function ring(x, p, rad) { x.beginPath(); x.arc(p[0] * VS, p[1] * VS, rad * VS, 0, Math.PI * 2); x.stroke(); }
+}
+
+// ------------------------------------------------ live camera (works where the browser allows camera access)
+let stream = null, camTimer = null, stable = 0, lastQ = null;
+$('#liveBtn').addEventListener('click', async () => {
+  $('#liveMsg').innerHTML = '';
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: false });
+  } catch (e) {
+    $('#liveMsg').append(el('div', { class: 'alert info', text: 'এখানে সরাসরি ক্যামেরা চালু করা যাচ্ছে না। "ছবি তুলুন" বোতাম চাপুন — ফোনের ক্যামেরা খুলবে, আর পূর্ণ মানের ছবিতে নির্ভুলতাও বেশি।' }));
+    return;
+  }
+  const v = $('#video'); v.srcObject = stream; await v.play(); $('#camArea').hidden = false;
+  try { await navigator.wakeLock?.request('screen'); } catch (e) {}
+  stable = 0; camTimer = setInterval(camTick, 250);
+});
+$('#camStop').addEventListener('click', stopCam);
+function stopCam() { if (camTimer) clearInterval(camTimer); camTimer = null; if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; $('#camArea').hidden = true; }
+const small = document.createElement('canvas');
+function camTick() {
+  const v = $('#video'); if (!v.videoWidth || current || busy) return;
+  const s = 640 / Math.max(v.videoWidth, v.videoHeight); small.width = Math.round(v.videoWidth * s); small.height = Math.round(v.videoHeight * s);
+  const x = small.getContext('2d', { willReadFrequently: true }); x.drawImage(v, 0, 0, small.width, small.height);
+  const d = x.getImageData(0, 0, small.width, small.height);
+  const q = O.quickLocate({ w: d.width, h: d.height, data: d.data });
+  const ov = $('#camOv'), b = v.getBoundingClientRect(); ov.width = b.width; ov.height = b.height;
+  const ox = ov.getContext('2d'); ox.clearRect(0, 0, ov.width, ov.height);
+  if (!q) { stable = 0; $('#camMsg').textContent = 'চার কোণার কালো চৌকো ফ্রেমে আনুন'; return; }
+  // object-fit: contain mapping
+  const sc = Math.min(b.width / small.width, b.height / small.height), dx = (b.width - small.width * sc) / 2, dy = (b.height - small.height * sc) / 2;
+  ox.strokeStyle = stable > 1 ? '#3ddc84' : '#ffc400'; ox.lineWidth = 4; ox.beginPath();
+  q.pts.forEach((p, i) => { const X = dx + p[0] * sc, Y = dy + p[1] * sc; i ? ox.lineTo(X, Y) : ox.moveTo(X, Y); }); ox.closePath(); ox.stroke();
+  const mv = lastQ ? Math.max(...q.pts.map((p, i) => Math.hypot(p[0] - lastQ[i][0], p[1] - lastQ[i][1]))) : 99;
+  lastQ = q.pts;
+  const size = Math.hypot(q.pts[0][0] - q.pts[1][0], q.pts[0][1] - q.pts[1][1]) / small.width;
+  if (size < 0.3 && small.width < small.height) { stable = 0; $('#camMsg').textContent = 'আরেকটু কাছে আনুন'; return; }
+  stable = mv < 4 ? stable + 1 : 0;
+  $('#camMsg').textContent = stable > 1 ? 'স্থির রাখুন…' : 'পাওয়া গেছে — স্থির রাখুন';
+  if (stable >= 3) {
+    stable = 0; $('#camMsg').textContent = 'ছবি নেওয়া হলো';
+    const img = sourceToImageData(v, v.videoWidth, v.videoHeight);
+    busy = true; setTimeout(() => { const r = O.read(img); r.img = img; busy = false; handleReading(r); }, 20);
+  }
+}
+
+// ------------------------------------------------ results
+function renderResults() {
+  const e = ex(), rs = e.results.slice().sort((a, b) => (+a.roll || 0) - (+b.roll || 0) || String(a.roll).localeCompare(String(b.roll)));
+  const gs = rs.map(r => gradeAns(r.ans, r.set, e));
+  $('#resSub').textContent = `${e.name} · ${e.n}টি প্রশ্ন · পূর্ণমান ${e.n * (+e.mark || 1)}` + (e.neg ? ` · ভুলে −${e.neg}` : '');
+  const st = $('#stats'); st.innerHTML = '';
+  const sc = gs.map(g => g.score);
+  const stat = (v, t) => st.append(el('div', { class: 'stat' }, el('b', { text: v }), el('span', { text: t })));
+  stat(String(rs.length), 'উত্তরপত্র');
+  stat(sc.length ? (sc.reduce((a, b) => a + b, 0) / sc.length).toFixed(2) : '–', 'গড় নম্বর');
+  stat(sc.length ? String(Math.max(...sc)) : '–', 'সর্বোচ্চ');
+  stat(sc.length ? String(Math.min(...sc)) : '–', 'সর্বনিম্ন');
+  const tw = $('#resTable'); tw.innerHTML = '';
+  if (!rs.length) { tw.append(el('div', { class: 'empty' }, el('p', { text: 'এখনো কোনো উত্তরপত্র স্ক্যান করা হয়নি।' }), el('a', { class: 'btn primary', href: '#scan', text: 'স্ক্যান শুরু করুন' }))); }
+  else {
+    const t = el('table', null, el('thead', null, el('tr', null, ...['রোল', 'সেট', 'সঠিক', 'ভুল', 'ফাঁকা', 'একাধিক', 'নম্বর', ''].map((h, i) => el('th', { class: i >= 2 && i < 7 ? 'num' : '', text: h })))));
+    const tb = el('tbody'); t.append(tb);
+    rs.forEach((r, i) => {
+      const g = gs[i];
+      const tr = el('tr', null, el('td', { class: 'mono', text: r.roll }), el('td', { text: r.set >= 0 ? SL[r.set] : '–' }), el('td', { class: 'num', text: g.correct }), el('td', { class: 'num', text: g.wrong }), el('td', { class: 'num', text: g.blank }), el('td', { class: 'num', text: g.multi }), el('td', { class: 'num', text: g.score }),
+        el('td', null, el('button', { type: 'button', class: 'ghost', text: 'মুছুন', onclick: (ev) => { ev.stopPropagation(); const c = ev.target.parentNode; c.innerHTML = ''; c.append(el('button', { type: 'button', class: 'danger', text: 'নিশ্চিত', onclick: () => { e.results = e.results.filter(z => z !== r); save(); renderResults(); } })); } })));
+      tb.append(tr);
+    });
+    tw.append(t);
+  }
+  const bars = $('#bars'); bars.innerHTML = '';
+  if (!rs.length) { bars.append(el('p', { class: 'sub', text: 'ফলাফল জমা হলে এখানে প্রতিটি প্রশ্নের সঠিক উত্তরের হার দেখাবে।' })); return; }
+  for (let i = 0; i < e.n; i++) {
+    const c = gs.filter(g => g.per[i] === 'correct').length, p = Math.round(c / gs.length * 100);
+    const col = p < 30 ? 'var(--bad)' : p < 60 ? 'var(--warn)' : 'var(--ok)';
+    bars.append(el('div', { class: 'bar' }, el('span', { class: 'mono', text: String(i + 1) }), el('span', { class: 't' }, el('i', { style: `width:${p}%;background:${col}` })), el('span', { class: 'mono', text: p + '%' })));
+  }
+}
+async function offerFile(filename, data, msgBox) {
+  msgBox.innerHTML = '';
+  let dl = null; try { dl = window.claude ? await window.claude.use('downloads') : null; } catch (e) {}
+  if (dl) {
+    try { await dl.save({ filename, data }); toast('ফাইল নামানো হয়েছে'); return; }
+    catch (err) { if (err && err.code === 'declined') return; }
+  }
+  // fallback outside claude.ai: regular download link, plus copyable text
+  try { const a = el('a', { href: URL.createObjectURL(new Blob([data])), download: filename }); document.body.append(a); a.click(); a.remove(); } catch (e) {}
+  if (typeof data === 'string' && data.length < 400000) {
+    const ta = el('textarea', { rows: '5', readonly: '' }); ta.value = data;
+    msgBox.append(el('div', { class: 'card', style: 'margin-top:8px' }, el('p', { class: 'sub', text: 'ফাইল নামানো না গেলে লেখাটি কপি করে ' + filename + ' নামে সংরক্ষণ করুন:' }), ta,
+      el('button', { type: 'button', style: 'margin-top:6px', text: 'কপি', onclick: async () => { try { await navigator.clipboard.writeText(data); toast('কপি হয়েছে'); } catch (e) { ta.select(); } } })));
+  }
+}
+$('#csvBtn').addEventListener('click', () => {
+  const e = ex(), rs = e.results.slice().sort((a, b) => (+a.roll || 0) - (+b.roll || 0));
+  const head = ['Roll', 'Set', 'Subject', 'Score', 'Total', 'Correct', 'Wrong', 'Blank', 'Multiple'].concat(Array.from({ length: e.n }, (_, i) => 'Q' + (i + 1)));
+  const lines = [head.join(',')];
+  rs.forEach(r => { const g = gradeAns(r.ans, r.set, e); lines.push([r.roll, r.set >= 0 ? SL[r.set] : '', r.subj, g.score, g.total, g.correct, g.wrong, g.blank, g.multi].concat(r.ans.slice(0, e.n).map(letter)).map(v => /[",]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v).join(',')); });
+  offerFile((e.name || 'result').replace(/[\\/:*?"<>|]/g, '_') + '.csv', '﻿' + lines.join('\r\n'), $('#dlMsg'));
+});
+$('#bakBtn').addEventListener('click', () => offerFile('omr-backup.json', JSON.stringify(S), $('#dlMsg')));
+$('#bakFile').addEventListener('change', async ev => {
+  const f = ev.target.files[0]; ev.target.value = ''; if (!f) return;
+  try { const d = JSON.parse(await f.text()); if (!d.exams) throw 0; S = d; save(); renderExamSel(); route(); toast('ব্যাকআপ ফেরত আনা হয়েছে'); }
+  catch (e) { toast('এটি এই অ্যাপের ব্যাকআপ ফাইল নয়'); }
+});
+
+// ------------------------------------------------ sheet
+function sheetOpts() { return { inst: S.inst || 'প্রতিষ্ঠানের নাম', title: S.title || 'নৈর্ব্যক্তিক উত্তরপত্র (OMR)' }; }
+function renderSheet() {
+  $('#shInst').value = S.inst || ''; $('#shTitle').value = S.title || '';
+  $('#sheetPrev').innerHTML = O.sheetSVG(sheetOpts());
+}
+['#shInst', '#shTitle'].forEach(id => $(id).addEventListener('input', () => { S.inst = $('#shInst').value; S.title = $('#shTitle').value; save(); $('#sheetPrev').innerHTML = O.sheetSVG(sheetOpts()); }));
+$('#svgBtn').addEventListener('click', () => offerFile('omr-sheet-A4.svg', O.sheetSVG(sheetOpts()).replace('<svg ', '<svg style="font-family:\'Noto Sans Bengali\',\'Hind Siliguri\',sans-serif" '), $('#shMsg')));
+
+// ------------------------------------------------ boot
+load(); renderExamSel(); bindExam(); route();
+})();
+</script>
+</body></html>
