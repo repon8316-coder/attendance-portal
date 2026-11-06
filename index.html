@@ -192,6 +192,46 @@ table.ct thead th:nth-child(-n+3){z-index:8}
 .sig .ln{border-top:.35mm solid #111;margin:0 auto 1.3mm;width:46mm;margin-top:17mm}
 .sig b{font-weight:600}
 
+/* ---------- take attendance ---------- */
+.qs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.qs button{border:1.5px solid #b9d8cf;background:#effaf6;color:#0b6b59;border-radius:999px;padding:7px 14px;font-weight:600;font-size:13.5px}
+.qs button:hover{background:#dff5ee}
+.daybox{background:#f4f8ff;border:1.5px solid var(--line);border-radius:12px;padding:8px 13px;font-weight:600;color:var(--brand)}
+.daybox small{display:block;font-weight:400;color:var(--muted)}
+.attHead{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.attHead h2{margin:0;color:var(--brand);font-size:20px}
+.attHead .sub{color:var(--muted);font-size:13.5px}
+.banner{background:#fff7e0;border:1px solid #f1d58a;color:#7a4b00;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:14px}
+.alist{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:150px}
+.alh,.ar{display:flex;align-items:center;gap:10px;padding:0 16px}
+.alh{height:40px;background:#f1f5fb;border-bottom:1px solid var(--line);font-size:12px;font-weight:700;letter-spacing:.6px;color:var(--muted)}
+.alh span,.ar .b{width:58px;text-align:center;flex:none}
+.alh .g,.ar .g{flex:1;text-align:left}
+.ar{height:72px;border-bottom:1px solid var(--line)}
+.ar:nth-child(even){background:#f8fafd}
+.ar .g b{font-size:24px;font-weight:800;line-height:1.1;display:block}
+.ar .g small{color:var(--muted);font-size:13px;display:block;max-width:60vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ar .b button{width:52px;height:52px;border-radius:50%;border:2px solid #c4cfdf;background:#fff;font-size:19px;font-weight:800;color:var(--ink);padding:0;transition:.1s}
+.ar .b button:active{transform:scale(.92)}
+.ar.P .bp button{background:#16a34a;border-color:#16a34a;color:#fff}
+.ar.A .ba button{background:#dc2626;border-color:#dc2626;color:#fff}
+.attbar{position:fixed;left:0;right:0;bottom:0;z-index:40;background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(15,27,45,.12);padding:10px 14px 12px}
+.attbar .in{max-width:1280px;margin:0 auto}
+.sums{display:flex;justify-content:space-between;text-align:center;margin-bottom:9px}
+.sums div b{display:block;font-size:19px;font-weight:800}.sums div span{font-size:11.5px;color:var(--muted)}
+.sums .p b{color:#16a34a}.sums .a b{color:#dc2626}.sums .c b{color:var(--brand)}
+.mk{display:flex;gap:8px;flex-wrap:wrap}
+.chipx{display:inline-flex;align-items:center;gap:6px;background:#eaf2ff;color:var(--brand);border-radius:999px;padding:4px 6px 4px 12px;font-size:13px;font-weight:600;margin:0 6px 6px 0}
+.chipx button{border:0;background:rgba(14,59,110,.12);border-radius:50%;width:20px;height:20px;line-height:18px;padding:0;color:var(--brand)}
+.asgrow{display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.asgrow .t{flex:1;min-width:150px}
+.prog{height:9px;border-radius:99px;background:#e8edf5;overflow:hidden;margin:6px 0}
+.prog i{display:block;height:100%;background:linear-gradient(90deg,#14806b,#34a853)}
+.ck{display:flex;gap:8px;align-items:center;padding:4px 0;font-size:14.5px}
+.ck input{width:auto}
+@media(max-width:760px){.ar{padding:0 10px;gap:6px}.ar .b button{width:50px;height:50px}.alh,.ar{padding:0 10px}.alh span,.ar .b{width:54px}}
+@media print{.attbar{display:none!important}}
+
 /* ---------- print ---------- */
 @media print{
   table.ct th,table.ct td{position:static!important;box-shadow:none!important}
@@ -346,11 +386,13 @@ async function loadData(){
   rows=await fetchAll('attendance',{select:'class_date,day_name,batch,faculty,department,section,roll,student_name,mobile,status,teacher_name,teacher_id',order:'class_date.asc,id.asc'});
   var st=await fetchAll('students',{select:'batch,faculty,roll,name,mobile',order:'id.asc'});
   var ro=await fetchAll('roster',{select:'batch,faculty,roll,name,mobile,father_name,father_mobile',order:'id.asc'});
+  try{myAsg=await rest('assignments',{select:'batch,faculty,roll_from,roll_to',teacher_id:'eq.'+session.user.id,order:'batch.asc,faculty.asc,roll_from.asc'});}catch(e){if(e.message==='AUTH')throw e;myAsg=[];}
   roster={};
   st.forEach(function(s){roster[s.batch+'|'+s.faculty+'|'+s.roll]={name:s.name||'',mobile:s.mobile||'',fname:'',fmobile:'',has:false};});
   ro.forEach(function(s){var k=s.batch+'|'+s.faculty+'|'+s.roll,o=roster[k]||{};
     roster[k]={name:s.name||o.name||'',mobile:s.mobile||o.mobile||'',fname:s.father_name||'',fmobile:s.father_mobile||'',has:true};});
 }
+var myAsg=[];
 function isAdmin(){return profile&&profile.role==='admin';}
 function info(r){var s=roster[r.batch+'|'+r.faculty+'|'+r.roll]||{};return{name:r.student_name||s.name||'',mobile:r.mobile||s.mobile||''};}
 
@@ -364,7 +406,7 @@ function topbar(query){
    '<div class="sbox'+(query?' has':'')+'"><span class="ic">🔍</span><input id="gs" type="search" autocomplete="off" placeholder="Search: ব্যাচ, সাল, রোল, নাম, মাস…" value="'+esc(query||'')+'"><button class="x" id="gsx" title="মুছুন">✕</button></div>'+
    '<div class="who"><button class="chip" id="whoBtn"><i>'+esc(ini)+'</i><span>'+esc(nm)+'</span></button>'+
    '<div class="menu" id="menu"><div class="role">'+esc(session?session.user.email:'')+' · '+(isAdmin()?'Admin':'Teacher')+'</div>'+
-   (isAdmin()?'<button id="mUp">📤 শিক্ষার্থী Excel আপলোড</button><button id="mTe">👩‍🏫 শিক্ষক যোগ/মোছা</button><button id="mDel">🗑️ ডেটা মুছুন</button>':'')+
+   '<button id="mAtt">✅ নতুন হাজিরা নিন</button>'+(isAdmin()?'<button id="mAsg">🎯 শিক্ষার্থী Assign</button><button id="mUp">📤 শিক্ষার্থী Excel আপলোড</button><button id="mTe">👩‍🏫 শিক্ষক যোগ/মোছা</button><button id="mDel">🗑️ ডেটা মুছুন</button>':'')+
    '<button id="mRef">🔄 ডেটা রিফ্রেশ</button><button id="mOut">🚪 Sign out</button></div></div>'+
    '</div></div>';
 }
@@ -378,8 +420,9 @@ function bindChrome(){
   var menu=document.getElementById('menu');
   document.getElementById('whoBtn').onclick=function(e){e.stopPropagation();menu.classList.toggle('open');};
   document.addEventListener('click',function h(){if(menu)menu.classList.remove('open');document.removeEventListener('click',h);},{once:true});
-  document.getElementById('mOut').onclick=function(){saveSession(null);rows=[];profile=null;roster={};loginView();};
+  document.getElementById('mOut').onclick=function(){saveSession(null);rows=[];profile=null;roster={};myAsg=[];af={};loginView();};
   document.getElementById('mRef').onclick=function(){start(true);};
+  var at=document.getElementById('mAtt');if(at)at.onclick=function(){attFormView();};var as=document.getElementById('mAsg');if(as)as.onclick=assignModal;
   var up=document.getElementById('mUp');if(up)up.onclick=uploadModal;
   var te=document.getElementById('mTe');if(te)te.onclick=teacherModal;
   var dl=document.getElementById('mDel');if(dl)dl.onclick=deleteModal;
@@ -415,17 +458,20 @@ function resolvePeriod(q){
   return{type:type,from:from,to:to,label:label};
 }
 
+function heroBtns(){return '<div class="row-actions no-print"><button class="btn green" id="goAtt">✅ নতুন হাজিরা নিন</button>'+(isAdmin()?'<button class="btn ghost" id="goAsg">🎯 শিক্ষার্থী Assign</button>':'')+'</div>';}
+function bindHero(){var a=document.getElementById('goAtt');if(a)a.onclick=function(){attFormView();};var b=document.getElementById('goAsg');if(b)b.onclick=assignModal;}
 function homeView(){
   if(!cq.batch){var b=uniq(allBF(),'batch');cq.batch=b.length?b[b.length-1]:'';}
   if(cq.batch&&!cq.faculty){var f=uniq(allBF().filter(function(r){return r.batch===cq.batch;}),'faculty');cq.faculty=f.length?f[0]:'';}
   var inB=allBF().filter(function(r){return r.batch===cq.batch;});
   var inBF=inB.filter(function(r){return r.faculty===cq.faculty;});
   if(!rows.length&&!Object.keys(roster).length){
-    page('<div class="hero rise"><h2>স্বাগতম 👋</h2><p>এখনো কোনো হাজিরা Sync করা হয়নি। অ্যাপ থেকে হাজিরা নিয়ে <b>SYNC TO REPON</b> চাপলে এখানে দেখা যাবে।</p></div>');
+    page('<div class="hero rise"><h2>স্বাগতম 👋</h2><p>এখনো কোনো হাজিরা নেওয়া হয়নি। নিচের বাটনে চেপে এখানেই হাজিরা নিতে পারেন — সেভ করলেই সরাসরি সার্ভারে জমা হবে।</p>'+heroBtns()+'</div>');
+    bindHero();
     return;
   }
   var customShow=cq.period==='Custom',refShow=['Weekly','Monthly','Annual'].indexOf(cq.period)>=0;
-  page('<div class="hero rise"><h2>হাজিরা রিপোর্ট</h2><p>ব্যাচ ও ফ্যাকাল্টি বেছে রিপোর্ট দেখুন। উপরের Search বক্সে ব্যাচ, সাল, রোল, নাম বা মাস লিখে সরাসরি খুঁজতেও পারেন।</p></div>'+
+  page('<div class="hero rise"><h2>হাজিরা রিপোর্ট</h2><p>ব্যাচ ও ফ্যাকাল্টি বেছে রিপোর্ট দেখুন। উপরের Search বক্সে ব্যাচ, সাল, রোল, নাম বা মাস লিখে সরাসরি খুঁজতেও পারেন।</p>'+heroBtns()+'</div>'+
    '<div class="panel rise"><div class="sec">Filter</div><div class="grid">'+
    '<div class="fld"><label>Batch</label><select id="fb">'+opts(uniq(allBF(),'batch'),cq.batch,'— বাছাই —')+'</select></div>'+
    '<div class="fld"><label>Faculty</label><select id="ff">'+opts(uniq(inB,'faculty'),cq.faculty,'— বাছাই —')+'</select></div>'+
@@ -436,6 +482,7 @@ function homeView(){
    (customShow?'<div class="fld"><label>থেকে</label><input type="date" id="ft" value="'+esc(cq.from)+'"></div><div class="fld"><label>পর্যন্ত</label><input type="date" id="fu" value="'+esc(cq.to)+'"></div>':'')+
    '<div class="fld"><label>Collegiate সীমা (%)</label><input type="number" id="fth" min="0" max="100" value="'+TH+'"></div>'+
    '</div></div><div id="rep"></div>');
+  bindHero();
   var ids={fb:'batch',ff:'faculty',fd:'department',fs:'section',fp:'period'};
   Object.keys(ids).forEach(function(id){document.getElementById(id).onchange=function(){
     cq[ids[id]]=this.value;
@@ -767,6 +814,232 @@ function deleteModal(){
       if(!res.ok)throw new Error('মোছা যায়নি ('+res.status+')');
       var j=await res.json();ov.remove();toast('মোছা হয়েছে: হাজিরা '+j.attendance+'টি, ছাত্রের তথ্য '+j.roster+'টি।');await start(false);
     }catch(e){m.textContent=e.message;this.disabled=false;this.textContent='আবার চেষ্টা';}};
+}
+
+/* ============================ take attendance (web) ============================ */
+var FIXED_BATCHES=['2027','2028','2029','2030','2031','2032','2033'];
+var DAYS_EN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+var DAYS_BN=['রবিবার','সোমবার','মঙ্গলবার','বুধবার','বৃহস্পতিবার','শুক্রবার','শনিবার'];
+var af={},marks={},existing={},attDraftKey='';
+function uid(){return session&&session.user&&session.user.id;}
+function getDef(){try{return JSON.parse(store.get('att_def_'+uid())||'{}')||{};}catch(e){return{};}}
+function setDef(o){store.set('att_def_'+uid(),JSON.stringify(o));}
+function dayOf(iso){var d=parseIso(iso);return d?d.getDay():null;}
+async function wr(method,path,params,body,prefer){
+  var t=await token();var u=new URL(SB_URL+'/rest/v1/'+path);
+  Object.keys(params||{}).forEach(function(k){u.searchParams.set(k,params[k]);});
+  var h={apikey:SB_KEY,Authorization:'Bearer '+t,'Content-Type':'application/json'};if(prefer)h.Prefer=prefer;
+  var r=await fetch(u,{method:method,headers:h,body:body?JSON.stringify(body):undefined});
+  if(r.status===401){saveSession(null);throw new Error('AUTH');}
+  if(!r.ok){var tx='';try{tx=await r.text();}catch(e){}throw new Error('সার্ভার ত্রুটি ('+r.status+')'+(tx&&tx.length<160?': '+tx:''));}
+  return r;
+}
+function facOptions(){var d=getDef(),m={};(d.facs||[]).concat(uniq(allBF(),'faculty'),myAsg.map(function(a){return a.faculty;})).forEach(function(x){if(x)m[x]=1;});return Object.keys(m).sort(numSort);}
+function depOptions(){var d=getDef(),m={};(d.deps||[]).concat(uniq(rows,'department')).forEach(function(x){if(x)m[x]=1;});return Object.keys(m).sort(numSort);}
+function batchOptions(){var m={};FIXED_BATCHES.concat(uniq(allBF(),'batch')).forEach(function(x){m[x]=1;});return Object.keys(m).sort(numSort);}
+function rollsInRoster(b,f,a,z){var n=0;Object.keys(roster).forEach(function(k){var p=k.split('|');if(p[0]===b&&p[1]===f){var r=parseInt(p[2],10);if(r>=a&&r<=z)n++;}});return n;}
+
+function attFormView(){
+  var d=getDef(),me=profile||{};
+  if(!af.date)af.date=fmtIso(new Date());
+  if(af.teacher==null)af.teacher=d.teacher||me.full_name||'';
+  ['batch','faculty','department','section'].forEach(function(k){if(af[k]==null)af[k]=d[k]||'';});
+  if(af.from==null)af.from='';if(af.to==null)af.to='';
+  page('<div class="hero rise"><h2>✅ নতুন হাজিরা</h2><p>ক্লাসের তথ্য দিয়ে <b>হাজিরা শুরু করুন</b> চাপুন। সেভ করলেই হাজিরা সরাসরি সার্ভারে জমা হবে — আলাদা করে সিঙ্ক করতে হবে না।</p></div>'+
+   '<div id="qs"></div><div class="panel rise"><div class="grid">'+
+   '<div class="fld"><label>তারিখ</label><input type="date" id="ad" value="'+esc(af.date)+'"></div>'+
+   '<div class="fld"><label>বার (স্বয়ংক্রিয়)</label><div class="daybox" id="adn"></div></div>'+
+   '<div class="fld"><label>Teacher Name</label><input id="at" value="'+esc(af.teacher)+'"></div>'+
+   '<div class="fld"><label>Batch</label><select id="ab">'+opts(batchOptions(),af.batch,'— বাছাই —')+'</select></div>'+
+   '<div class="fld"><label>Faculty</label><input id="af" list="dlf" value="'+esc(af.faculty)+'" placeholder="যেমন: Science" autocomplete="off"></div>'+
+   '<div class="fld"><label>Department / Subject</label><input id="adp" list="dld" value="'+esc(af.department)+'" placeholder="যেমন: Zoology" autocomplete="off"></div>'+
+   '<div class="fld"><label>Section</label><input id="as" value="'+esc(af.section)+'" placeholder="যেমন: A"></div>'+
+   '<div class="fld"><label>From Roll</label><input id="afr" type="number" inputmode="numeric" value="'+esc(af.from)+'"></div>'+
+   '<div class="fld"><label>To Roll</label><input id="ato" type="number" inputmode="numeric" value="'+esc(af.to)+'"></div></div>'+
+   '<datalist id="dlf">'+facOptions().map(function(x){return '<option value="'+esc(x)+'">';}).join('')+'</datalist>'+
+   '<datalist id="dld">'+depOptions().map(function(x){return '<option value="'+esc(x)+'">';}).join('')+'</datalist>'+
+   '<div class="chips" style="margin:14px 0 0"><span class="tag g" id="atot"></span></div>'+
+   '<div class="row-actions"><button class="btn green" id="ago">▶ হাজিরা শুরু করুন</button><button class="btn ghost" id="aset">⚙️ সেটিংস</button><button class="btn ghost" id="aback">← রিপোর্টে ফিরুন</button></div><div id="aerr"></div></div>');
+  function sync(){af.date=document.getElementById('ad').value;af.teacher=document.getElementById('at').value;af.batch=document.getElementById('ab').value;
+    af.faculty=document.getElementById('af').value.trim();af.department=document.getElementById('adp').value.trim();af.section=document.getElementById('as').value.trim();
+    af.from=document.getElementById('afr').value.trim();af.to=document.getElementById('ato').value.trim();
+    var di=dayOf(af.date);document.getElementById('adn').innerHTML=di==null?'—':DAYS_BN[di]+'<small>'+DAYS_EN[di]+'</small>';
+    var a=parseInt(af.from,10),z=parseInt(af.to,10),n=(a>=0&&z>=a)?z-a+1:null;
+    var t='মোট শিক্ষার্থী: '+(n==null?'—':n);
+    if(n!=null&&af.batch&&af.faculty){var k=rollsInRoster(af.batch,af.faculty,a,z);if(k)t+=' · নামের তালিকা আছে: '+k+' জন';}
+    document.getElementById('atot').textContent=t;
+    var q=document.getElementById('qs');
+    var sel=myAsg.filter(function(x){return !af.batch||!af.faculty?true:(x.batch===af.batch&&x.faculty===af.faculty);});
+    q.innerHTML=sel.length?'<div class="hint" style="margin-bottom:6px">⚡ আপনার Assign করা রোল — চাপলে নিজে নিজে বসে যাবে:</div><div class="qs">'+sel.map(function(x,i){return '<button data-i="'+i+'">'+esc(x.batch)+' · '+esc(x.faculty)+' · রোল '+x.roll_from+'–'+x.roll_to+'</button>';}).join('')+'</div>':'';
+    Array.prototype.forEach.call(q.querySelectorAll('button'),function(b){b.onclick=function(){var x=sel[+b.getAttribute('data-i')];
+      af.batch=x.batch;af.faculty=x.faculty;af.from=String(x.roll_from);af.to=String(x.roll_to);
+      document.getElementById('ab').value=x.batch;document.getElementById('af').value=x.faculty;document.getElementById('afr').value=af.from;document.getElementById('ato').value=af.to;sync();};});
+  }
+  ['ad','at','ab','af','adp','as','afr','ato'].forEach(function(id){var el=document.getElementById(id);el.oninput=sync;el.onchange=sync;});
+  sync();
+  document.getElementById('aback').onclick=function(){homeView();};
+  document.getElementById('aset').onclick=attSettings;
+  document.getElementById('ago').onclick=attStart;
+}
+function attErr(m){var e=document.getElementById('aerr');if(e)e.innerHTML=m?'<div class="err" style="margin-top:12px">'+esc(m)+'</div>':'';}
+async function attStart(){
+  var a=parseInt(af.from,10),z=parseInt(af.to,10);
+  if(!af.date)return attErr('তারিখ দিন।');
+  if(!af.teacher.trim())return attErr('Teacher Name লিখুন।');
+  if(!af.batch)return attErr('Batch বাছাই করুন।');
+  if(!af.faculty)return attErr('Faculty লিখুন।');
+  if(!af.department)return attErr('Department লিখুন।');
+  if(!af.section)return attErr('Section লিখুন।');
+  if(!(a>=0)||!(z>=0))return attErr('From Roll ও To Roll সংখ্যায় লিখুন।');
+  if(z<a)return attErr('To Roll অবশ্যই From Roll-এর সমান বা বড় হতে হবে।');
+  if(z-a+1>500)return attErr('একবারে সর্বোচ্চ ৫০০ জন নেওয়া যায়। রেঞ্জ ছোট করুন।');
+  var d=getDef();d.teacher=af.teacher.trim();d.batch=af.batch;d.faculty=af.faculty;d.department=af.department;d.section=af.section;
+  d.facs=(d.facs||[]);if(d.facs.indexOf(af.faculty)<0)d.facs.push(af.faculty);
+  d.deps=(d.deps||[]);if(d.deps.indexOf(af.department)<0)d.deps.push(af.department);setDef(d);
+  setView('<div class="spin">লোড হচ্ছে…</div>');
+  existing={};marks={};
+  try{
+    var L=await fetchAll('attendance',{select:'roll,status',teacher_id:'eq.'+uid(),class_date:'eq.'+af.date,batch:'eq.'+af.batch,faculty:'eq.'+af.faculty,department:'eq.'+af.department,section:'eq.'+af.section,order:'id.asc'});
+    L.forEach(function(r){existing[r.roll]=r.status==='Present'?'P':'A';marks[r.roll]=existing[r.roll];});
+  }catch(e){if(e.message==='AUTH'){fail(e);return;}}
+  attDraftKey='att_draft_'+uid()+'|'+[af.date,af.batch,af.faculty,af.department,af.section,a,z].join('|');
+  try{var dr=JSON.parse(store.get(attDraftKey)||'null');if(dr)Object.keys(dr).forEach(function(k){marks[k]=dr[k];});}catch(e){}
+  attGridView();
+}
+function attRolls(){var a=parseInt(af.from,10),z=parseInt(af.to,10),o=[];for(var i=a;i<=z;i++)o.push(String(i));return o;}
+function attCounts(){var p=0,ab=0,rl=attRolls();rl.forEach(function(r){if(marks[r]==='P')p++;else if(marks[r]==='A')ab++;});
+  return{total:rl.length,p:p,a:ab,u:rl.length-p-ab,pc:rl.length?Math.round(p/rl.length*100):0};}
+function attGridView(){
+  var rl=attRolls(),pad=Math.max(2,Math.min(10,String(af.to).length)),hasEx=Object.keys(existing).length>0,di=dayOf(af.date);
+  var html='<div class="attHead"><div><h2>'+esc(af.department)+' · Section '+esc(af.section)+'</h2><div class="sub">'+fmtBn(af.date)+' ('+(di==null?'':DAYS_BN[di])+') · Batch '+esc(af.batch)+' · '+esc(af.faculty)+' · রোল '+af.from+'–'+af.to+'</div></div>'+
+   '<div class="mk"><button class="btn sm ghost" id="mP">সবাই Present</button><button class="btn sm ghost" id="mA">সবাই Absent</button><button class="btn sm ghost" id="mC">Clear</button><button class="btn sm ghost" id="mB">← পরিবর্তন</button></div></div>'+
+   (hasEx?'<div class="banner">ℹ️ এই ক্লাসের এই তারিখের হাজিরা আগেই নেওয়া হয়েছে। আপনি সেটি <b>সম্পাদনা</b> করছেন — সেভ করলে আগেরটি হালনাগাদ হবে, নকল হবে না।</div>':'')+
+   '<div class="alist"><div class="alh"><div class="g">ROLL</div><span>ABSENT</span><span>PRESENT</span></div><div id="alist">'+
+   rl.map(function(r){var s=roster[af.batch+'|'+af.faculty+'|'+r]||{};var nm=s.name||'';
+    return '<div class="ar '+(marks[r]||'')+'" data-r="'+r+'"><div class="g"><b>'+esc(r.length<pad?('0000000000'+r).slice(-pad):r)+'</b>'+(nm?'<small>'+esc(nm)+'</small>':'')+'</div><div class="b ba"><button data-s="A">A</button></div><div class="b bp"><button data-s="P">P</button></div></div>';}).join('')+
+   '</div></div><div class="attbar no-print"><div class="in"><div class="sums" id="sums"></div><button class="btn green block" id="asv">💾 SAVE ATTENDANCE</button></div></div>';
+  page(html);
+  function sums(){var c=attCounts();document.getElementById('sums').innerHTML='<div><b>'+c.total+'</b><span>Total</span></div><div class="p"><b>'+c.p+'</b><span>Present</span></div><div class="a"><b>'+c.a+'</b><span>Absent</span></div><div><b>'+c.u+'</b><span>Unmarked</span></div><div class="c"><b>'+c.pc+'%</b><span>Attendance</span></div>';}
+  function paint(r){var el=document.querySelector('.ar[data-r="'+r+'"]');if(el)el.className='ar '+(marks[r]||'');}
+  function draft(){store.set(attDraftKey,JSON.stringify(marks));}
+  document.getElementById('alist').onclick=function(e){var b=e.target.closest('button');if(!b)return;var row=b.closest('.ar'),r=row.getAttribute('data-r'),s=b.getAttribute('data-s');
+    marks[r]=(marks[r]===s)?'':s;if(!marks[r])delete marks[r];paint(r);sums();draft();
+    var nx=row.nextElementSibling;if(nx&&marks[r]){var rc=nx.getBoundingClientRect();if(rc.bottom>window.innerHeight-170)window.scrollBy({top:rc.bottom-(window.innerHeight-170)+80,behavior:'smooth'});}};
+  document.getElementById('mP').onclick=function(){rl.forEach(function(r){marks[r]='P';paint(r);});sums();draft();};
+  document.getElementById('mA').onclick=function(){rl.forEach(function(r){marks[r]='A';paint(r);});sums();draft();};
+  document.getElementById('mC').onclick=function(){marks={};rl.forEach(paint);sums();draft();};
+  document.getElementById('mB').onclick=function(){attFormView();};
+  document.getElementById('asv').onclick=attSave;
+  sums();
+}
+async function attSave(){
+  var rl=attRolls(),c=attCounts();
+  if(c.p+c.a===0){toast('কাউকে Present বা Absent চিহ্নিত করা হয়নি।');return;}
+  if(c.u>0&&!confirm('এখনো '+c.u+' জনকে চিহ্নিত করা হয়নি। তাদের হাজিরা সেভ হবে না। তবুও সেভ করবেন?'))return;
+  var btn=document.getElementById('asv');btn.disabled=true;btn.textContent='সেভ হচ্ছে…';
+  var day=DAYS_EN[dayOf(af.date)],att=[],stu=[],gone=[];
+  rl.forEach(function(r){var m=marks[r];
+    if(!m){if(existing[r])gone.push(r);return;}
+    var s=roster[af.batch+'|'+af.faculty+'|'+r]||{};
+    att.push({teacher_id:uid(),class_date:af.date,day_name:day,batch:af.batch,faculty:af.faculty,department:af.department,section:af.section,roll:r,student_name:s.name||'',mobile:s.mobile||'',status:m==='P'?'Present':'Absent',teacher_name:af.teacher.trim()});
+    if(s.name||s.mobile)stu.push({teacher_id:uid(),batch:af.batch,faculty:af.faculty,department:af.department,section:af.section,roll:r,name:s.name||'',mobile:s.mobile||''});});
+  try{
+    for(var i=0;i<att.length;i+=300)await wr('POST','attendance',{on_conflict:'teacher_id,class_date,batch,faculty,department,section,roll'},att.slice(i,i+300),'resolution=merge-duplicates,return=minimal');
+    if(gone.length)await wr('DELETE','attendance',{teacher_id:'eq.'+uid(),class_date:'eq.'+af.date,batch:'eq.'+af.batch,faculty:'eq.'+af.faculty,department:'eq.'+af.department,section:'eq.'+af.section,roll:'in.('+gone.join(',')+')'});
+    try{for(var j=0;j<stu.length;j+=300)await wr('POST','students',{on_conflict:'teacher_id,batch,faculty,department,section,roll'},stu.slice(j,j+300),'resolution=merge-duplicates,return=minimal');}catch(e2){}
+    store.del(attDraftKey);
+    await loadData();cq={batch:af.batch,faculty:af.faculty,department:'',section:'',period:'All',ref:'',from:'',to:''};colf={};dateF={};
+    homeView();toast('✓ হাজিরা সেভ হয়েছে ও সার্ভারে জমা হয়েছে ('+c.p+' Present, '+c.a+' Absent)');
+  }catch(e){
+    if(e.message==='AUTH'){fail(e);return;}
+    btn.disabled=false;btn.textContent='💾 আবার চেষ্টা করুন';toast('সেভ হয়নি: '+e.message+' — আপনার মার্ক করা তথ্য এই পেজে আছে, ইন্টারনেট দেখে আবার চাপুন।');
+  }
+}
+function attSettings(){
+  var d=getDef(),ov=document.createElement('div');ov.className='ov';
+  function lst(key,id){return (d[key]||[]).map(function(x,i){return '<span class="chipx">'+esc(x)+'<button data-k="'+key+'" data-i="'+i+'">×</button></span>';}).join('')||'<span class="hint">খালি</span>';}
+  function draw(){ov.innerHTML='<div class="modal"><h3>⚙️ সেটিংস</h3><div class="hint">এখানে ঠিক করা তথ্য প্রতিবার নতুন হাজিরার ফর্মে নিজে থেকে বসবে। এটি শুধু এই ব্রাউজারে সংরক্ষিত থাকে।</div>'+
+    '<div class="grid" style="margin-top:12px"><div class="fld"><label>Default Teacher Name</label><input id="sT" value="'+esc(d.teacher||'')+'"></div>'+
+    '<div class="fld"><label>Default Batch</label><select id="sB">'+opts(batchOptions(),d.batch||'','—')+'</select></div>'+
+    '<div class="fld"><label>Default Faculty</label><input id="sF" value="'+esc(d.faculty||'')+'"></div>'+
+    '<div class="fld"><label>Default Department</label><input id="sD" value="'+esc(d.department||'')+'"></div>'+
+    '<div class="fld"><label>Default Section</label><input id="sS" value="'+esc(d.section||'')+'"></div></div>'+
+    '<div class="sec" style="margin-top:14px">Faculty তালিকা</div><div id="lf1">'+lst('facs')+'</div><div style="display:flex;gap:8px"><input id="nf" placeholder="নতুন Faculty"><button class="btn sm" id="af1">যোগ</button></div>'+
+    '<div class="sec" style="margin-top:14px">Department তালিকা</div><div id="lf2">'+lst('deps')+'</div><div style="display:flex;gap:8px"><input id="nd" placeholder="নতুন Department"><button class="btn sm" id="ad1">যোগ</button></div>'+
+    '<div class="row-actions"><button class="btn sm green" id="sSave">সংরক্ষণ করুন</button><button class="btn sm ghost" id="sC">বন্ধ করুন</button></div></div>';
+    function grab(){d.teacher=document.getElementById('sT').value.trim();d.batch=document.getElementById('sB').value;d.faculty=document.getElementById('sF').value.trim();d.department=document.getElementById('sD').value.trim();d.section=document.getElementById('sS').value.trim();}
+    document.getElementById('sC').onclick=function(){ov.remove();};
+    document.getElementById('sSave').onclick=function(){grab();setDef(d);af={};ov.remove();toast('সেটিংস সংরক্ষিত হয়েছে।');attFormView();};
+    document.getElementById('af1').onclick=function(){grab();var v=document.getElementById('nf').value.trim();if(v){d.facs=d.facs||[];if(d.facs.indexOf(v)<0)d.facs.push(v);}draw();};
+    document.getElementById('ad1').onclick=function(){grab();var v=document.getElementById('nd').value.trim();if(v){d.deps=d.deps||[];if(d.deps.indexOf(v)<0)d.deps.push(v);}draw();};
+    Array.prototype.forEach.call(ov.querySelectorAll('.chipx button'),function(b){b.onclick=function(){grab();d[b.getAttribute('data-k')].splice(+b.getAttribute('data-i'),1);draw();};});}
+  document.body.appendChild(ov);draw();
+}
+
+/* ============================ admin: assign students to teachers ============================ */
+async function assignModal(){
+  if(!isAdmin())return;
+  var pairs={};rosterPairs().forEach(function(r){pairs[r.batch+'|'+r.faculty]=r;});
+  var keys=Object.keys(pairs).sort(numSort);
+  if(!keys.length){toast('আগে শিক্ষার্থী Excel আপলোড করুন, তারপর Assign করবেন।');return;}
+  var ov=document.createElement('div');ov.className='ov';
+  ov.innerHTML='<div class="modal" style="max-width:660px"><h3>🎯 শিক্ষার্থী Assign</h3><div class="hint">রোল রেঞ্জ ধরে শিক্ষকের কাছে ছাত্র-ছাত্রী Assign করুন। শিক্ষক শুধু নিজের রোলগুলোর নাম, মোবাইল ও হাজিরা দেখবেন।</div><div id="am" style="margin-top:10px"><div class="spin">লোড হচ্ছে…</div></div></div>';
+  document.body.appendChild(ov);
+  var S={key:keys[keys.length-1],asg:[],T:[],err:'',busy:false};
+  async function load(){
+    try{S.asg=await rest('assignments',{select:'id,teacher_id,batch,faculty,roll_from,roll_to',order:'batch.asc,faculty.asc,roll_from.asc'});
+      S.T=await rest('profiles',{select:'id,email,full_name,role',role:'in.(teacher,admin)',order:'role.asc,email.asc'});}
+    catch(e){S.err=e.message;}
+    draw();
+  }
+  function tname(id){var t=S.T.filter(function(x){return x.id===id;})[0];return t?(t.full_name||t.email):'অজানা শিক্ষক';}
+  function scope(){var p=S.key.split('|');return Object.keys(roster).filter(function(k){var a=k.split('|');return a[0]===p[0]&&a[1]===p[1];}).map(function(k){var a=k.split('|');return{roll:a[2],n:parseInt(a[2],10),name:roster[k].name};}).filter(function(x){return isFinite(x.n);}).sort(function(a,b){return a.n-b.n;});}
+  function mine(){var p=S.key.split('|');return S.asg.filter(function(a){return a.batch===p[0]&&a.faculty===p[1];});}
+  function covered(n,L){return L.some(function(a){return n>=a.roll_from&&n<=a.roll_to;});}
+  function runs(sc,L){var out=[],cur=null;sc.forEach(function(s){if(!covered(s.n,L)){if(!cur)cur=[];cur.push(s);}else if(cur){out.push(cur);cur=null;}});if(cur)out.push(cur);return out;}
+  function rt(r){return r.length===1?r[0].roll:r[0].roll+'–'+r[r.length-1].roll;}
+  function draw(){
+    var p=S.key.split('|'),sc=scope(),L=mine(),rn=runs(sc,L),done=sc.filter(function(s){return covered(s.n,L);}).length;
+    var h='';
+    if(S.err)h+='<div class="err">'+esc(S.err)+'</div>';
+    h+='<div class="fld"><label>Batch · Faculty</label><select id="ak">'+keys.map(function(k){var a=k.split('|');return '<option value="'+esc(k)+'"'+(k===S.key?' selected':'')+'>Batch '+esc(a[0])+' · '+esc(a[1])+'</option>';}).join('')+'</select></div>'+
+     '<div class="panel" style="margin:10px 0"><b>মোট '+sc.length+' জন · Assign হয়েছে '+done+' জন</b><div class="prog"><i style="width:'+(sc.length?Math.round(done/sc.length*100):0)+'%"></i></div>'+
+     '<div class="hint">'+(rn.length?'বাকি আছে: '+rn.map(rt).join(', '):'সবাই Assign করা হয়ে গেছে ✓')+'</div></div>'+
+     '<div class="sec">নতুন Assign</div><div class="grid"><div class="fld"><label>শিক্ষক</label><select id="at1"><option value="">— বাছাই —</option>'+S.T.map(function(t){return '<option value="'+t.id+'">'+esc(t.full_name||t.email)+(t.role==='admin'?' (Admin)':'')+'</option>';}).join('')+'</select></div>'+
+     '<div class="fld"><label>রোল থেকে</label><input id="af2" type="number" value="'+(rn.length?rn[0][0].roll:'')+'"></div><div class="fld"><label>রোল পর্যন্ত</label><input id="at2" type="number" value="'+(rn.length?rn[0][rn[0].length-1].roll:'')+'"></div></div>'+
+     '<div class="row-actions"><button class="btn sm green" id="aGo">Assign করুন</button></div>'+
+     '<div class="sec" style="margin-top:16px">সমান ভাগে ভাগ করুন</div><div class="hint">যাঁদের মধ্যে ভাগ হবে টিক দিন। <b>এই ক্লাসের আগের সব Assign মুছে</b> নতুন করে বসবে।</div>'+
+     '<div style="max-height:150px;overflow:auto;margin:6px 0">'+S.T.map(function(t){return '<label class="ck"><input type="checkbox" class="sp" value="'+t.id+'"> '+esc(t.full_name||t.email)+'</label>';}).join('')+'</div>'+
+     '<div class="row-actions" style="margin-top:4px"><button class="btn sm" id="aSp">সমান ভাগ করুন</button></div>'+
+     '<div class="sec" style="margin-top:16px">এই ক্লাসের Assign তালিকা</div>'+
+     (L.length?L.map(function(a){var c=sc.filter(function(s){return s.n>=a.roll_from&&s.n<=a.roll_to;}).length;return '<div class="asgrow"><div class="t"><b>'+esc(tname(a.teacher_id))+'</b><br><small>রোল '+a.roll_from+'–'+a.roll_to+' · '+c+' জন</small></div><button class="btn sm ghost" data-rm="'+a.id+'" style="color:#b42318">বাতিল</button></div>';}).join(''):'<div class="hint">এখনো কাউকে Assign করা হয়নি।</div>')+
+     '<div class="row-actions"><button class="btn sm ghost" id="aClose">বন্ধ করুন</button></div>';
+    document.getElementById('am').innerHTML=h;
+    document.getElementById('aClose').onclick=function(){ov.remove();start(true);};
+    document.getElementById('ak').onchange=function(){S.key=this.value;S.err='';draw();};
+    document.getElementById('aGo').onclick=async function(){
+      var t=document.getElementById('at1').value,f=parseInt(document.getElementById('af2').value,10),z=parseInt(document.getElementById('at2').value,10);
+      if(!t){S.err='আগে একজন শিক্ষক বাছুন।';draw();return;}
+      if(!(f>=0)||!(z>=f)){S.err='রোলের শুরু ও শেষ সংখ্যা ঠিক করে লিখুন (শেষ ≥ শুরু)।';draw();return;}
+      this.disabled=true;
+      try{await wr('POST','assignments',{},[{teacher_id:t,batch:p[0],faculty:p[1],roll_from:f,roll_to:z}],'return=minimal');S.err='';toast('Assign করা হয়েছে।');await load();}
+      catch(e){S.err='Assign করা যায়নি: '+e.message;draw();}};
+    document.getElementById('aSp').onclick=async function(){
+      var ids=Array.prototype.map.call(document.querySelectorAll('.sp:checked'),function(x){return x.value;});
+      if(!ids.length){S.err='যাঁদের মধ্যে ভাগ হবে তাঁদের টিক দিন।';draw();return;}
+      if(!sc.length)return;
+      if(!confirm('এই ক্লাসের আগের সব Assign মুছে '+ids.length+' জনের মধ্যে সমানভাগে ভাগ হবে। নিশ্চিত?'))return;
+      var n=ids.length,base=Math.floor(sc.length/n),extra=sc.length%n,idx=0,out=[];
+      for(var i=0;i<n;i++){var sz=base+(i<extra?1:0);if(!sz)continue;var part=sc.slice(idx,idx+sz);idx+=sz;out.push({teacher_id:ids[i],batch:p[0],faculty:p[1],roll_from:part[0].n,roll_to:part[part.length-1].n});}
+      this.disabled=true;
+      try{await wr('DELETE','assignments',{batch:'eq.'+p[0],faculty:'eq.'+p[1]});await wr('POST','assignments',{},out,'return=minimal');S.err='';toast(out.length+' জন শিক্ষকের মধ্যে ভাগ করা হয়েছে।');await load();}
+      catch(e){S.err='ভাগ করা যায়নি: '+e.message;await load();}};
+    Array.prototype.forEach.call(document.querySelectorAll('[data-rm]'),function(b){b.onclick=async function(){
+      var a=S.asg.filter(function(x){return String(x.id)===b.getAttribute('data-rm');})[0];if(!a)return;
+      if(!confirm(tname(a.teacher_id)+'-এর রোল '+a.roll_from+'–'+a.roll_to+' Assign বাতিল করবেন?'))return;
+      try{await wr('DELETE','assignments',{id:'eq.'+a.id});S.err='';await load();}catch(e){S.err='বাতিল করা যায়নি: '+e.message;draw();}};});
+  }
+  load();
 }
 
 /* ============================ start ============================ */
