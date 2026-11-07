@@ -200,6 +200,11 @@ table.ct thead th:nth-child(-n+3){z-index:8}
 .sh-info b .cb{margin-left:6px}
 @media print{.cb{display:none!important}}
 /* ---------- take attendance ---------- */
+.cmb{display:flex;gap:6px;align-items:stretch}.cmb select{flex:1;min-width:0}
+.addb{flex:none;border:1.5px solid #b9d8cf;background:#effaf6;color:#0b6b59;border-radius:12px;padding:0 12px;font-weight:700;font-size:13px;white-space:nowrap}
+.addb:hover{background:#dff5ee}
+.attHead,.banner,.alist{max-width:760px;margin-left:auto;margin-right:auto}
+.attbar .in{max-width:760px}
 .qs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
 .qs button{border:1.5px solid #b9d8cf;background:#effaf6;color:#0b6b59;border-radius:999px;padding:7px 14px;font-weight:600;font-size:13.5px}
 .qs button:hover{background:#dff5ee}
@@ -209,7 +214,7 @@ table.ct thead th:nth-child(-n+3){z-index:8}
 .attHead h2{margin:0;color:var(--brand);font-size:20px}
 .attHead .sub{color:var(--muted);font-size:13.5px}
 .banner{background:#fff7e0;border:1px solid #f1d58a;color:#7a4b00;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:14px}
-.alist{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:150px}
+.alist{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:150px;margin-top:0}
 .alh,.ar{display:flex;align-items:center;gap:10px;padding:0 16px}
 .alh{height:40px;background:#f1f5fb;border-bottom:1px solid var(--line);font-size:12px;font-weight:700;letter-spacing:.6px;color:var(--muted)}
 .alh span,.ar .b{width:58px;text-align:center;flex:none}
@@ -223,7 +228,7 @@ table.ct thead th:nth-child(-n+3){z-index:8}
 .ar.P .bp button{background:#16a34a;border-color:#16a34a;color:#fff}
 .ar.A .ba button{background:#dc2626;border-color:#dc2626;color:#fff}
 .attbar{position:fixed;left:0;right:0;bottom:0;z-index:40;background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(15,27,45,.12);padding:10px 14px 12px}
-.attbar .in{max-width:1280px;margin:0 auto}
+.attbar .in{max-width:760px;margin:0 auto}
 .sums{display:flex;justify-content:space-between;text-align:center;margin-bottom:9px}
 .sums div b{display:block;font-size:19px;font-weight:800}.sums div span{font-size:11.5px;color:var(--muted)}
 .sums .p b{color:#16a34a}.sums .a b{color:#dc2626}.sums .c b{color:var(--brand)}
@@ -427,7 +432,6 @@ function bindChrome(){
   document.getElementById('home').onclick=function(){homeView();};
   var menu=document.getElementById('menu');
   document.getElementById('whoBtn').onclick=function(e){e.stopPropagation();menu.classList.toggle('open');};
-  document.addEventListener('click',function h(){if(menu)menu.classList.remove('open');document.removeEventListener('click',h);},{once:true});
   document.getElementById('mOut').onclick=function(){saveSession(null);rows=[];profile=null;roster={};myAsg=[];af={};loginView();};
   document.getElementById('mRef').onclick=function(){start(true);};
   var at=document.getElementById('mAtt');if(at)at.onclick=function(){attFormView();};var as=document.getElementById('mAsg');if(as)as.onclick=assignModal;
@@ -833,7 +837,13 @@ var DAYS_EN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturd
 var DAYS_BN=['রবিবার','সোমবার','মঙ্গলবার','বুধবার','বৃহস্পতিবার','শুক্রবার','শনিবার'];
 var af={},marks={},existing={},attDraftKey='';
 function uid(){return session&&session.user&&session.user.id;}
-function getDef(){try{return JSON.parse(store.get('att_def_'+uid())||'{}')||{};}catch(e){return{};}}
+var DEF_FACS=['Science','Arts','Commerce'];
+var DEF_DEPS=['Zoology','Botany','Physics','Chemistry','Mathematics','English','Bangla','ICT','Other','Zoology Practical','Physics Practical','Botany Practical','Chemistry Practical','Math Practical','ICT Practical'];
+function mergeU(a,b){var o=a.slice();b.forEach(function(x){if(x&&o.indexOf(x)<0)o.push(x);});return o;}
+function getDef(){var o={};try{o=JSON.parse(store.get('att_def_'+uid())||'{}')||{};}catch(e){o={};}
+  if(!o.facs)o.facs=mergeU(DEF_FACS,uniq(allBF(),'faculty'));
+  if(!o.deps)o.deps=mergeU(DEF_DEPS,uniq(rows,'department'));
+  return o;}
 function setDef(o){store.set('att_def_'+uid(),JSON.stringify(o));}
 function dayOf(iso){var d=parseIso(iso);return d?d.getDay():null;}
 async function wr(method,path,params,body,prefer){
@@ -848,12 +858,16 @@ async function wr(method,path,params,body,prefer){
 var SECTIONS=['A','B','C','D'];
 function secOptions(cur){var l=SECTIONS.slice();if(cur&&l.indexOf(cur)<0)l.push(cur);return l;}
 function comboSel(id,list,cur,first,what){var l=list.slice();if(cur&&l.indexOf(cur)<0)l.push(cur);
-  return '<select id="'+id+'">'+opts(l,cur,first)+'<option value="__new__">➕ নতুন '+what+' যোগ করুন…</option></select>';}
+  return '<div class="cmb"><select id="'+id+'">'+opts(l,cur,first)+'<option value="__new__">➕ নতুন '+what+' যোগ করুন…</option></select><button type="button" class="addb" data-for="'+id+'">＋ Add</button></div>';}
 function setSel(id,v){var el=document.getElementById(id);if(!el)return;if(v&&!Array.prototype.some.call(el.options,function(o){return o.value===v;})){var o=document.createElement('option');o.value=o.textContent=v;el.insertBefore(o,el.querySelector('option[value="__new__"]'));}el.value=v;}
-function bindCombo(id,cb,what){var el=document.getElementById(id);if(!el)return;var prev=el.value;
-  el.onchange=function(){if(el.value==='__new__'){var v=prompt('নতুন '+(what||'নাম')+' লিখুন:');v=v&&v.trim();if(v){setSel(id,v);}else el.value=prev;}prev=el.value;cb(el.value);};}
-function facOptions(){var d=getDef(),m={};['Science','Arts','Commerce'].concat(d.facs||[],uniq(allBF(),'faculty'),myAsg.map(function(a){return a.faculty;})).forEach(function(x){if(x)m[x]=1;});return Object.keys(m).sort(numSort);}
-function depOptions(){var d=getDef(),m={};(d.deps||[]).concat(uniq(rows,'department')).forEach(function(x){if(x)m[x]=1;});return Object.keys(m).sort(numSort);}
+function bindCombo(id,cb,what,kind){var el=document.getElementById(id);if(!el)return;var prev=el.value;
+  function ask(){var v=prompt('নতুন '+(what||'নাম')+' লিখুন:');v=v&&v.trim();
+    if(v){setSel(id,v);if(kind){var d=getDef();if(d[kind].indexOf(v)<0){d[kind].push(v);setDef(d);}}}else el.value=prev;
+    prev=el.value;cb(el.value);}
+  el.onchange=function(){if(el.value==='__new__')ask();else{prev=el.value;cb(el.value);}};
+  var bt=document.querySelector('.addb[data-for="'+id+'"]');if(bt)bt.onclick=ask;}
+function facOptions(){return mergeU(mergeU(getDef().facs,uniq(allBF(),'faculty')),myAsg.map(function(a){return a.faculty;}));}
+function depOptions(){return getDef().deps.slice();}
 function batchOptions(){var m={};FIXED_BATCHES.concat(uniq(allBF(),'batch')).forEach(function(x){m[x]=1;});return Object.keys(m).sort(numSort);}
 function rollsInRoster(b,f,a,z){var n=0;Object.keys(roster).forEach(function(k){var p=k.split('|');if(p[0]===b&&p[1]===f){var r=parseInt(p[2],10);if(r>=a&&r<=z)n++;}});return n;}
 
@@ -869,7 +883,7 @@ function attFormView(){
    '<div class="fld"><label>বার (স্বয়ংক্রিয়)</label><div class="daybox" id="adn"></div></div>'+
    '<div class="fld"><label>Teacher Name</label><input id="at" value="'+esc(af.teacher)+'"></div>'+
    '<div class="fld"><label>Batch</label><select id="ab">'+opts(batchOptions(),af.batch,'— বাছাই —')+'</select></div>'+
-   '<div class="fld"><label>Faculty</label>'+comboSel('af',facOptions(),af.faculty,'— বাছাই —','Faculty')+'</div>'+
+   '<div class="fld"><label>Faculty</label>'+comboSel('af',getDef().facs,af.faculty,'— বাছাই —','Faculty')+'</div>'+
    '<div class="fld"><label>Department / Subject</label>'+comboSel('adp',depOptions(),af.department,'— বাছাই —','Department')+'</div>'+
    '<div class="fld"><label>Section</label><select id="as">'+opts(secOptions(af.section),af.section,'— বাছাই —')+'</select></div>'+
    '<div class="fld"><label>From Roll</label><input id="afr" type="number" inputmode="numeric" value="'+esc(af.from)+'"></div>'+
@@ -892,7 +906,7 @@ function attFormView(){
       setSel('ab',x.batch);setSel('af',x.faculty);document.getElementById('afr').value=af.from;document.getElementById('ato').value=af.to;sync();};});
   }
   ['ad','at','ab','af','adp','as','afr','ato'].forEach(function(id){var el=document.getElementById(id);el.oninput=sync;el.onchange=sync;});
-  bindCombo('af',sync,'Faculty');bindCombo('adp',sync,'Department');
+  bindCombo('af',sync,'Faculty','facs');bindCombo('adp',sync,'Department','deps');
   sync();
   document.getElementById('aback').onclick=function(){homeView();};
   document.getElementById('aset').onclick=attSettings;
@@ -978,13 +992,13 @@ function attSettings(){
   function draw(){ov.innerHTML='<div class="modal"><h3>⚙️ সেটিংস</h3><div class="hint">এখানে ঠিক করা তথ্য প্রতিবার নতুন হাজিরার ফর্মে নিজে থেকে বসবে। এটি শুধু এই ব্রাউজারে সংরক্ষিত থাকে।</div>'+
     '<div class="grid" style="margin-top:12px"><div class="fld"><label>Default Teacher Name</label><input id="sT" value="'+esc(d.teacher||'')+'"></div>'+
     '<div class="fld"><label>Default Batch</label><select id="sB">'+opts(batchOptions(),d.batch||'','—')+'</select></div>'+
-    '<div class="fld"><label>Default Faculty</label><input id="sF" value="'+esc(d.faculty||'')+'"></div>'+
-    '<div class="fld"><label>Default Department</label><input id="sD" value="'+esc(d.department||'')+'"></div>'+
+    '<div class="fld"><label>Default Faculty</label><select id="sF">'+opts(d.facs,d.faculty||'','—')+'</select></div>'+
+    '<div class="fld"><label>Default Department</label><select id="sD">'+opts(d.deps,d.department||'','—')+'</select></div>'+
     '<div class="fld"><label>Default Section</label><select id="sS">'+opts(secOptions(d.section),d.section||'','—')+'</select></div></div>'+
-    '<div class="sec" style="margin-top:14px">Faculty তালিকা</div><div id="lf1">'+lst('facs')+'</div><div style="display:flex;gap:8px"><input id="nf" placeholder="নতুন Faculty"><button class="btn sm" id="af1">যোগ</button></div>'+
-    '<div class="sec" style="margin-top:14px">Department তালিকা</div><div id="lf2">'+lst('deps')+'</div><div style="display:flex;gap:8px"><input id="nd" placeholder="নতুন Department"><button class="btn sm" id="ad1">যোগ</button></div>'+
+    '<div class="sec" style="margin-top:14px">Faculty তালিকা</div><div id="lf1">'+lst('facs')+'</div><div style="display:flex;gap:8px"><input id="nf" placeholder="নতুন Faculty"><button class="btn sm" id="af1">＋ Add</button></div>'+
+    '<div class="sec" style="margin-top:14px">Department তালিকা</div><div id="lf2">'+lst('deps')+'</div><div style="display:flex;gap:8px"><input id="nd" placeholder="নতুন Department"><button class="btn sm" id="ad1">＋ Add</button></div>'+
     '<div class="row-actions"><button class="btn sm green" id="sSave">সংরক্ষণ করুন</button><button class="btn sm ghost" id="sC">বন্ধ করুন</button></div></div>';
-    function grab(){d.teacher=document.getElementById('sT').value.trim();d.batch=document.getElementById('sB').value;d.faculty=document.getElementById('sF').value.trim();d.department=document.getElementById('sD').value.trim();d.section=document.getElementById('sS').value.trim();}
+    function grab(){d.teacher=document.getElementById('sT').value.trim();d.batch=document.getElementById('sB').value;d.faculty=document.getElementById('sF').value;d.department=document.getElementById('sD').value;d.section=document.getElementById('sS').value.trim();}
     document.getElementById('sC').onclick=function(){ov.remove();};
     document.getElementById('sSave').onclick=function(){grab();setDef(d);af={};ov.remove();toast('সেটিংস সংরক্ষিত হয়েছে।');attFormView();};
     document.getElementById('af1').onclick=function(){grab();var v=document.getElementById('nf').value.trim();if(v){d.facs=d.facs||[];if(d.facs.indexOf(v)<0)d.facs.push(v);}draw();};
@@ -1009,25 +1023,28 @@ async function assignModal(){
     draw();
   }
   function tname(id){var t=S.T.filter(function(x){return x.id===id;})[0];return t?(t.full_name||t.email):'অজানা শিক্ষক';}
-  function scope(){return Object.keys(roster).filter(function(k){var a=k.split('|');return a[0]===S.batch&&a[1]===S.faculty;}).map(function(k){var a=k.split('|');return{roll:a[2],n:parseInt(a[2],10),name:roster[k].name};}).filter(function(x){return isFinite(x.n);}).sort(function(a,b){return a.n-b.n;});}
+  function scope(){var m={};Object.keys(roster).forEach(function(k){var a=k.split('|');if(a[0]===S.batch&&a[1]===S.faculty)m[a[2]]=roster[k].name||'';});
+    rows.forEach(function(r){if(r.batch===S.batch&&r.faculty===S.faculty&&m[r.roll]===undefined)m[r.roll]='';});
+    return Object.keys(m).map(function(r){return{roll:r,n:parseInt(r,10),name:m[r]};}).filter(function(x){return isFinite(x.n);}).sort(function(a,b){return a.n-b.n;});}
   function mine(){return S.asg.filter(function(a){return a.batch===S.batch&&a.faculty===S.faculty;});}
   function covered(n,L){return L.some(function(a){return n>=a.roll_from&&n<=a.roll_to;});}
   function runs(sc,L){var out=[],cur=null;sc.forEach(function(s){if(!covered(s.n,L)){if(!cur)cur=[];cur.push(s);}else if(cur){out.push(cur);cur=null;}});if(cur)out.push(cur);return out;}
   function rt(r){return r.length===1?r[0].roll:r[0].roll+'–'+r[r.length-1].roll;}
   function draw(){
     var sc=scope(),L=mine(),rn=runs(sc,L),done=sc.filter(function(s){return covered(s.n,L);}).length;
-    var fl=facOptions().concat(S.extra);var h='';
+    var fl=facOptions();var h='';
     if(S.err)h+='<div class="err">'+esc(S.err)+'</div>';
     h+='<div class="grid"><div class="fld"><label>Batch</label><select id="ab1">'+opts(batchOptions(),S.batch,'— বাছাই —')+'</select></div>'+
      '<div class="fld"><label>Faculty</label>'+comboSel('af1',fl,S.faculty,'— বাছাই —','Faculty')+'</div></div>';
     if(!S.batch||!S.faculty){h+='<div class="hint" style="margin:10px 0">Batch ও Faculty বাছাই করুন।</div><div class="row-actions"><button class="btn sm ghost" id="aClose">বন্ধ করুন</button></div>';document.getElementById('am').innerHTML=h;bind(sc,L,rn);return;}
-    h+='<div class="panel" style="margin:10px 0">'+(sc.length?'<b>মোট '+sc.length+' জন · Assign হয়েছে '+done+' জন</b><div class="prog"><i style="width:'+Math.round(done/sc.length*100)+'%"></i></div><div class="hint">'+(rn.length?'বাকি আছে: '+rn.map(rt).join(', '):'সবাই Assign করা হয়ে গেছে ✓')+'</div>':'<div class="hint">এই Batch ও Faculty-র শিক্ষার্থীর তালিকা (Excel) এখনো আপলোড করা নেই। তবুও নিচে রোল রেঞ্জ লিখে Assign করা যাবে।</div>')+'</div>'+
+    h+='<div class="panel" style="margin:10px 0">'+(sc.length?'<b>মোট '+sc.length+' জন · Assign হয়েছে '+done+' জন</b><div class="prog"><i style="width:'+Math.round(done/sc.length*100)+'%"></i></div><div class="hint">'+(rn.length?'বাকি আছে: '+rn.map(rt).join(', '):'সবাই Assign করা হয়ে গেছে ✓')+'</div>':'<div class="hint">এই Batch ও Faculty-র কোনো শিক্ষার্থী তালিকা বা হাজিরা এখনো নেই। তবুও রোল রেঞ্জ লিখে Assign ও সমান ভাগ করা যাবে।</div>')+'</div>'+
      '<div class="sec">নতুন Assign</div><div class="grid"><div class="fld"><label>শিক্ষক</label><select id="at1"><option value="">— বাছাই —</option>'+S.T.map(function(t){return '<option value="'+t.id+'">'+esc(t.full_name||t.email)+(t.role==='admin'?' (Admin)':'')+'</option>';}).join('')+'</select></div>'+
      '<div class="fld"><label>রোল থেকে</label><input id="af2" type="number" value="'+(rn.length?rn[0][0].roll:'')+'"></div><div class="fld"><label>রোল পর্যন্ত</label><input id="at2" type="number" value="'+(rn.length?rn[0][rn[0].length-1].roll:'')+'"></div></div>'+
      '<div class="row-actions"><button class="btn sm green" id="aGo">Assign করুন</button></div>'+
-     (sc.length?'<div class="sec" style="margin-top:16px">সমান ভাগে ভাগ করুন</div><div class="hint">যাঁদের মধ্যে ভাগ হবে টিক দিন। <b>এই ক্লাসের আগের সব Assign মুছে</b> নতুন করে বসবে।</div>'+
+     '<div class="sec" style="margin-top:16px">সমান ভাগে ভাগ করুন</div><div class="hint">রোল রেঞ্জ ঠিক করুন, তারপর যাঁদের মধ্যে ভাগ হবে টিক দিন। <b>এই ক্লাসের আগের সব Assign মুছে</b> নতুন করে বসবে।</div>'+
+     '<div class="grid" style="margin-top:8px"><div class="fld"><label>রোল থেকে</label><input id="sf" type="number" value="'+(sc.length?sc[0].roll:'')+'"></div><div class="fld"><label>রোল পর্যন্ত</label><input id="st" type="number" value="'+(sc.length?sc[sc.length-1].roll:'')+'"></div></div>'+
      '<div style="max-height:190px;overflow:auto;margin:6px 0">'+S.T.map(function(t){return '<label class="ck"><input type="checkbox" class="sp" value="'+t.id+'"><span>'+esc(t.full_name||t.email)+'</span></label>';}).join('')+'</div>'+
-     '<div class="row-actions" style="margin-top:4px"><button class="btn sm" id="aSp">সমান ভাগ করুন</button></div>':'')+
+     '<div class="row-actions" style="margin-top:4px"><button class="btn sm" id="aSp">সমান ভাগ করুন</button></div>'+
      '<div class="sec" style="margin-top:16px">এই ক্লাসের Assign তালিকা</div>'+
      (L.length?L.map(function(a){var c=sc.filter(function(s){return s.n>=a.roll_from&&s.n<=a.roll_to;}).length;return '<div class="asgrow"><div class="t"><b>'+esc(tname(a.teacher_id))+'</b><br><small>রোল '+a.roll_from+'–'+a.roll_to+(sc.length?' · '+c+' জন':'')+'</small></div><button class="btn sm ghost" data-rm="'+a.id+'" style="color:#b42318">বাতিল</button></div>';}).join(''):'<div class="hint">এখনো কাউকে Assign করা হয়নি।</div>')+
      '<div class="row-actions"><button class="btn sm ghost" id="aClose">বন্ধ করুন</button></div>';
@@ -1037,7 +1054,7 @@ async function assignModal(){
   function bind(sc,L,rn){
     document.getElementById('aClose').onclick=function(){ov.remove();start(true);};
     document.getElementById('ab1').onchange=function(){S.batch=this.value;var f=uniq(rosterPairs().filter(function(r){return r.batch===S.batch;}),'faculty');if(f.indexOf(S.faculty)<0&&f.length&&!S.faculty)S.faculty=f[0];S.err='';draw();};
-    bindCombo('af1',function(v){S.faculty=v;if(v&&facOptions().concat(S.extra).indexOf(v)<0)S.extra.push(v);S.err='';draw();},'Faculty');
+    bindCombo('af1',function(v){S.faculty=v;S.err='';draw();},'Faculty','facs');
     var go=document.getElementById('aGo');if(!go)return;
     go.onclick=async function(){
       var t=document.getElementById('at1').value,f=parseInt(document.getElementById('af2').value,10),z=parseInt(document.getElementById('at2').value,10);
@@ -1050,9 +1067,15 @@ async function assignModal(){
     if(spb)spb.onclick=async function(){
       var ids=Array.prototype.map.call(document.querySelectorAll('.sp:checked'),function(x){return x.value;});
       if(!ids.length){S.err='যাঁদের মধ্যে ভাগ হবে তাঁদের টিক দিন।';draw();return;}
-      if(!confirm('এই ক্লাসের আগের সব Assign মুছে '+ids.length+' জনের মধ্যে সমানভাগে ভাগ হবে। নিশ্চিত?'))return;
-      var n=ids.length,base=Math.floor(sc.length/n),extra=sc.length%n,idx=0,out=[];
-      for(var i=0;i<n;i++){var sz=base+(i<extra?1:0);if(!sz)continue;var part=sc.slice(idx,idx+sz);idx+=sz;out.push({teacher_id:ids[i],batch:S.batch,faculty:S.faculty,roll_from:part[0].n,roll_to:part[part.length-1].n});}
+      var rf=parseInt(document.getElementById('sf').value,10),rz=parseInt(document.getElementById('st').value,10);
+      if(!(rf>=0)||!(rz>=rf)){S.err='সমান ভাগের জন্য রোলের শুরু ও শেষ সংখ্যা ঠিক করে লিখুন (শেষ ≥ শুরু)।';draw();return;}
+      if(rz-rf>5000){S.err='রোল রেঞ্জ অনেক বড়।';draw();return;}
+      var list=sc.filter(function(x){return x.n>=rf&&x.n<=rz;});
+      if(!list.length){for(var q=rf;q<=rz;q++)list.push({n:q});}
+      if(ids.length>list.length){S.err='শিক্ষক সংখ্যা ('+ids.length+') শিক্ষার্থীর চেয়ে বেশি। কম শিক্ষক টিক দিন।';draw();return;}
+      if(!confirm('এই ক্লাসের আগের সব Assign মুছে '+list.length+' জনকে '+ids.length+' জনের মধ্যে সমানভাগে ভাগ করা হবে। নিশ্চিত?'))return;
+      var n=ids.length,base=Math.floor(list.length/n),extra=list.length%n,idx=0,out=[];
+      for(var i=0;i<n;i++){var sz=base+(i<extra?1:0);if(!sz)continue;var part=list.slice(idx,idx+sz);idx+=sz;out.push({teacher_id:ids[i],batch:S.batch,faculty:S.faculty,roll_from:part[0].n,roll_to:part[part.length-1].n});}
       this.disabled=true;
       try{await wr('DELETE','assignments',{batch:'eq.'+S.batch,faculty:'eq.'+S.faculty});await wr('POST','assignments',{},out,'return=minimal');S.err='';toast(out.length+' জন শিক্ষকের মধ্যে ভাগ করা হয়েছে।');await load();}
       catch(e){S.err='ভাগ করা যায়নি: '+e.message;await load();}};
@@ -1064,6 +1087,14 @@ async function assignModal(){
   load();
 }
 
+/* close popups by clicking outside / Esc */
+(function(){var dn=null;
+  document.addEventListener('pointerdown',function(e){dn=e.target;});
+  document.addEventListener('click',function(e){var t=e.target;
+    if(t.classList&&t.classList.contains('ov')&&dn===t)t.remove();
+    var m=document.getElementById('menu');if(m&&m.classList.contains('open')&&!m.contains(t)&&!(t.closest&&t.closest('#whoBtn')))m.classList.remove('open');});
+  document.addEventListener('keydown',function(e){if(e.key!=='Escape')return;var o=document.querySelectorAll('.ov');if(o.length)o[o.length-1].remove();var m=document.getElementById('menu');if(m)m.classList.remove('open');});
+})();
 /* ============================ start ============================ */
 function fail(e){if(e&&e.message==='AUTH'){loginView('সেশন শেষ — আবার সাইন-ইন করুন।');return;}
   setView('<div class="login"><div class="lcard"><h1>সমস্যা হয়েছে</h1><div class="err">'+esc(e&&e.message||e)+'</div><button class="btn block" onclick="start()">আবার চেষ্টা</button></div></div>','auth');}
